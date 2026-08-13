@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { LessonShell } from "@/components/LessonShell"
+import { NumberPopIn } from "@/components/NumberPopIn"
 
 const LOG_CODE = `// server/server.ts — observabilidad real de esta web (#48-49)
 app.use((req, res, next) => {
@@ -148,7 +149,10 @@ export function ProduccionLesson() {
               {phase === "streaming" ? "Generando…" : phase === "cached" ? "Repetir (cache hit)" : "Simular streaming"}
             </Button>
             {phase === "done" && (
-              <Badge variant="secondary">primera llamada: {ttft}ms al primer token · {totalMs}ms total</Badge>
+              <Badge variant="secondary">
+                primera llamada: <NumberPopIn value={ttft ?? 0} />ms al primer token ·{" "}
+                <NumberPopIn value={totalMs ?? 0} />ms total
+              </Badge>
             )}
             {phase === "cached" && (
               <Badge variant="default">cache hit: 0ms, sin llamada LLM (#51)</Badge>

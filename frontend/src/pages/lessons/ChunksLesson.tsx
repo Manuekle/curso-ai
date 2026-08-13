@@ -2,7 +2,8 @@ import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { LessonShell } from "@/components/LessonShell"
-import { SliderThumb } from "@/components/SliderThumb"
+import { LiquidSlider } from "@/components/LiquidSlider"
+import { NumberPopIn } from "@/components/NumberPopIn"
 
 // Misma función que corre en server/rag.ts — duplicada acá para demo instantánea sin API
 function chunkText(text: string, size: number, overlap: number): string[] {
@@ -31,9 +32,6 @@ export function ChunksLesson() {
   const [size, setSize] = useState(80)
   const [overlap, setOverlap] = useState(20)
   const chunks = chunkText(text, size, overlap)
-
-  const sizePct = ((size - 20) / (200 - 20)) * 100
-  const overlapPct = ((overlap - 0) / (40 - 0)) * 100
 
   return (
     <LessonShell
@@ -71,48 +69,28 @@ export function ChunksLesson() {
         <CardContent className="flex flex-col gap-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="size">Tamaño (chars) — size = {size}</Label>
-              <div className="relative h-6">
-                <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-secondary" />
-                <div className="absolute top-1/2 left-0 h-0 w-full -translate-y-1/2">
-                  <div
-                    className="absolute top-1/2 -translate-y-1/2"
-                    style={{ left: `calc(${sizePct}% - 8px)` }}
-                  >
-                    <SliderThumb x={0} />
-                  </div>
-                </div>
-                <input
-                  id="size"
-                  type="range"
-                  min={20}
-                  max={200}
-                  value={size}
-                  onChange={(e) => setSize(Number(e.target.value))}
-                  className="absolute inset-0 h-full w-full cursor-pointer appearance-none bg-transparent opacity-0"
-                />
-              </div>
+              <Label htmlFor="size">
+                Tamaño (chars) — size = <NumberPopIn value={size} />
+              </Label>
+              <LiquidSlider
+                id="size"
+                min={20}
+                max={200}
+                value={size}
+                onChange={setSize}
+              />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="overlap">Overlap (chars) — overlap = {overlap}</Label>
-              <div className="relative h-6">
-                <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-secondary" />
-                <div
-                  className="absolute top-1/2 -translate-y-1/2"
-                  style={{ left: `calc(${overlapPct}% - 8px)` }}
-                >
-                  <SliderThumb x={0} />
-                </div>
-                <input
-                  id="overlap"
-                  type="range"
-                  min={0}
-                  max={40}
-                  value={overlap}
-                  onChange={(e) => setOverlap(Number(e.target.value))}
-                  className="absolute inset-0 h-full w-full cursor-pointer appearance-none bg-transparent opacity-0"
-                />
-              </div>
+              <Label htmlFor="overlap">
+                Overlap (chars) — overlap = <NumberPopIn value={overlap} />
+              </Label>
+              <LiquidSlider
+                id="overlap"
+                min={0}
+                max={40}
+                value={overlap}
+                onChange={setOverlap}
+              />
             </div>
           </div>
           <textarea
@@ -122,7 +100,7 @@ export function ChunksLesson() {
             className="min-h-24 w-full rounded-md border bg-transparent px-3 py-2 text-sm"
           />
           <p className="text-xs text-muted-foreground">
-            {text.length} chars → {chunks.length} chunks
+            <NumberPopIn value={text.length} /> chars → <NumberPopIn value={chunks.length} /> chunks
           </p>
           <div className="flex flex-col gap-2">
             {chunks.map((c, i) => (

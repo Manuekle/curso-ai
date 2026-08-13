@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { LessonShell } from "@/components/LessonShell"
+import { NumberPopIn } from "@/components/NumberPopIn"
 
 const COSTO = `Costo =
   Tokens entrada + Tokens salida
@@ -183,10 +184,12 @@ export function CostosModelosLesson() {
                   return (
                     <tr key={m.id} className="border-b last:border-0">
                       <td className="p-3 font-medium">{m.label}</td>
-                      <td className="p-3">${dayCost(m).toFixed(2)}</td>
+                      <td className="p-3">
+                        $<NumberPopIn value={dayCost(m).toFixed(2)} />
+                      </td>
                       <td className="p-3">
                         <span className="flex items-center gap-2">
-                          ${month.toFixed(2)}
+                          $<NumberPopIn value={month.toFixed(2)} />
                           {month === cheapest && <Badge>más barato</Badge>}
                         </span>
                       </td>

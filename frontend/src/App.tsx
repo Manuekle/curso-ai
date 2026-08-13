@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { BrowserRouter, NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom"
 import {
-  RiArrowRightLine,
   RiCloseLine,
+  RiGithubFill,
   RiMenuLine,
   RiMoonLine,
   RiSearchLine,
   RiSunLine,
 } from "@remixicon/react"
+import { Toaster } from "sileo"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useTheme } from "@/components/theme-provider"
@@ -48,7 +49,13 @@ const GROUPS: Array<{ group: string; items: NavItem[] }> = [
     group: "Manual",
     items: [{ to: "/docs", label: "Manual de entrevista" }],
   },
-  { group: "Práctica", items: [{ to: "/", label: "Playground", end: true }] },
+  {
+    group: "Práctica",
+    items: [
+      { to: "/", label: "Playground", end: true },
+      { to: "/agents", label: "Mis Agentes" },
+    ],
+  },
   {
     group: "IA fundamental",
     items: [
@@ -292,9 +299,17 @@ interface HeaderProps {
 function Header({ onMenu, onSearch }: HeaderProps) {
   const location = useLocation()
   const { theme, setTheme } = useTheme()
+  const [stars, setStars] = useState<number | null>(null)
   const [systemDark, setSystemDark] = useState(
     () => window.matchMedia("(prefers-color-scheme: dark)").matches
   )
+
+  useEffect(() => {
+    fetch("https://api.github.com/repos/Manuekle/curso-ai")
+      .then((res) => res.json())
+      .then((data) => setStars(data.stargazers_count))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-color-scheme: dark)")
@@ -332,6 +347,11 @@ function Header({ onMenu, onSearch }: HeaderProps) {
             active={location.pathname.startsWith("/aprender")}
           />
           <NavPill to="/" label="Playground" active={location.pathname === "/"} />
+          <NavPill
+            to="/agents"
+            label="Mis Agentes"
+            active={location.pathname === "/agents"}
+          />
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
@@ -369,20 +389,17 @@ function Header({ onMenu, onSearch }: HeaderProps) {
             </span>
           </Button>
 
-          <NavLink
-            to="/agents"
-            className="hidden h-9 items-center gap-1.5 rounded-full bg-secondary px-4 text-[13px] text-secondary-foreground transition-colors duration-150 hover:bg-secondary/80 sm:inline-flex"
+          <a
+            href="https://github.com/Manuekle/curso-ai"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex h-9 items-center gap-1.5 rounded-full px-3 text-muted-foreground transition-colors duration-150 hover:bg-secondary/70 hover:text-foreground"
           >
-            Mis Agentes
-          </NavLink>
-
-          <NavLink
-            to="/aprender/entrevista"
-            className="hidden h-9 items-center gap-1.5 rounded-full bg-primary px-4 text-[13px] text-primary-foreground transition-colors duration-150 hover:bg-primary/80 sm:inline-flex"
-          >
-            Simulacro
-            <RiArrowRightLine className="size-3.5" />
-          </NavLink>
+            <RiGithubFill className="size-5" />
+            <span className="hidden text-[13px] font-medium lg:inline">
+              {stars !== null ? stars : "Star"}
+            </span>
+          </a>
         </div>
       </div>
     </header>
@@ -484,12 +501,6 @@ function AppShell() {
             <NavLink to="/" end className="text-muted-foreground transition-colors duration-150 hover:text-foreground">
               Playground
             </NavLink>
-            <NavLink
-              to="/aprender/entrevista"
-              className="text-muted-foreground transition-colors duration-150 hover:text-foreground"
-            >
-              Simulacro
-            </NavLink>
           </nav>
           <p className="text-xs text-muted-foreground">agentes + RAG · v0.1.0</p>
         </div>
@@ -542,6 +553,7 @@ export function App() {
   return (
     <BrowserRouter>
       <AppShell />
+      <Toaster position="bottom-right" />
     </BrowserRouter>
   )
 }

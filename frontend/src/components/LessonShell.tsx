@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { CodeBlock } from "@/components/CodeBlock"
 import { SlidingTabs, type SlidingTab } from "@/components/SlidingTabs"
+import { Accordion } from "@/components/Accordion"
 import { cn } from "@/lib/utils"
 
 interface Props {
@@ -89,7 +90,6 @@ export function LessonShell({
     { key: "interview", label: "Entrevista" },
   ]
   const [activeIdx, setActiveIdx] = useState(0)
-  const [showSolution, setShowSolution] = useState(false)
   const activeKey = tabs[activeIdx]?.key ?? "preview"
 
   return (
@@ -127,24 +127,15 @@ export function LessonShell({
       {activeKey === "interview" && (
         <div className="anim-tab mt-6">
           <Card className="rounded-[22px]">
-            <CardContent className="flex flex-col gap-2 px-8 md:px-10">
+            <CardContent className="flex flex-col gap-3 px-8 md:px-10">
               <p className="font-mono text-xs text-muted-foreground">Pregunta de entrevista</p>
               <p className="text-[15.5px] leading-relaxed">{interview}</p>
               {solution && (
-                <div className="mt-3 flex flex-col gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowSolution((v) => !v)}
-                    className="w-fit cursor-pointer rounded-full bg-secondary px-4 py-1.5 text-[12.5px] text-secondary-foreground transition-colors duration-150 hover:bg-secondary/70"
-                  >
-                    {showSolution ? "Ocultar solución" : "Ver solución"}
-                  </button>
-                  {showSolution && (
-                    <div className="anim-reveal rounded-lg border border-border bg-muted/50 p-4 text-[14px] leading-relaxed text-foreground/90">
-                      {solution}
-                    </div>
-                  )}
-                </div>
+                <Accordion title="Ver respuesta de entrevista modelo" className="mt-2">
+                  <div className="text-[14px] leading-relaxed text-foreground/90 pt-2 pb-1">
+                    {solution}
+                  </div>
+                </Accordion>
               )}
             </CardContent>
           </Card>

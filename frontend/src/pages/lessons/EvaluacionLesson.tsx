@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { LessonShell } from "@/components/LessonShell"
+import { NumberPopIn } from "@/components/NumberPopIn"
 
 const GOLDEN = `// golden dataset (#62): casos con respuesta esperada
 const dataset = [
@@ -137,11 +138,21 @@ const benchmark = [
           {result && (
             <div className="flex flex-col gap-4">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm font-medium">Agregado sobre {result.perQuery.length} queries:</span>
-                <Badge variant="secondary">recall@1: {result.aggregate.recallAt1}</Badge>
-                <Badge variant="secondary">recall@3: {result.aggregate.recallAt3}</Badge>
-                <Badge variant="secondary">recall@5: {result.aggregate.recallAt5}</Badge>
-                <Badge variant="secondary">MRR: {result.aggregate.mrr}</Badge>
+                <span className="text-sm font-medium">
+                  Agregado sobre <NumberPopIn value={result.perQuery.length} /> queries:
+                </span>
+                <Badge variant="secondary">
+                  recall@1: <NumberPopIn value={result.aggregate.recallAt1} />
+                </Badge>
+                <Badge variant="secondary">
+                  recall@3: <NumberPopIn value={result.aggregate.recallAt3} />
+                </Badge>
+                <Badge variant="secondary">
+                  recall@5: <NumberPopIn value={result.aggregate.recallAt5} />
+                </Badge>
+                <Badge variant="secondary">
+                  MRR: <NumberPopIn value={result.aggregate.mrr} />
+                </Badge>
               </div>
 
               {result.perQuery.map((row, i) => (
@@ -152,14 +163,20 @@ const benchmark = [
                     <Badge variant={row.recall.k1 ? "default" : "destructive"}>
                       {row.recall.k1 ? "hit@1" : row.recall.k3 ? "hit@3" : row.recall.k5 ? "hit@5" : "no en top-5"}
                     </Badge>
-                    <Badge variant="outline">precision@5: {row.precisionK5}</Badge>
-                    <Badge variant="outline">MRR: {row.mrr}</Badge>
+                    <Badge variant="outline">
+                      precision@5: <NumberPopIn value={row.precisionK5} />
+                    </Badge>
+                    <Badge variant="outline">
+                      MRR: <NumberPopIn value={row.mrr} />
+                    </Badge>
                   </div>
                   <div className="flex flex-col gap-1">
                     {row.topK.map((h) => (
                       <div key={h.id} className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
                         <span className="min-w-0 flex-1 truncate">{h.id}</span>
-                        <span>{h.score}</span>
+                        <span>
+                          <NumberPopIn value={h.score} />
+                        </span>
                         {h.id.startsWith(row.relevant) && <Badge>relevante</Badge>}
                       </div>
                     ))}

@@ -1,10 +1,9 @@
 import { Link } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { LessonShell } from "@/components/LessonShell"
+import { Accordion } from "@/components/Accordion"
 
-const CORTAS = `Respuestas cortas para memorizar (#XXIII):
-
-Agente     → sistema orientado a objetivos que decide y usa herramientas.
+const CORTAS = `Agente     → sistema orientado a objetivos que decide y usa herramientas.
 RAG        → recupera información relevante para dar contexto al LLM antes de generar.
 Embedding  → representación vectorial para comparar información semánticamente.
 Workflow   → secuencia de pasos definidos para automatizar.
@@ -17,22 +16,21 @@ Elegir LLM    → benchmark: calidad, costo, latencia, seguridad, contexto, inte
 ¿Prompt es seguridad? → No. Los permisos se imponen en la arquitectura.
 ¿Siempre IA? → No. Workflow tradicional si resuelve mejor.`
 
-const QUINCE = `Las 15 ideas que debés recordar (#XXVIII):
-1  No todo necesita IA.
-2  No todo lo que necesita IA necesita un agente.
-3  El prompt no es seguridad.
-4  Los permisos deben estar en la arquitectura.
-5  El LLM no debería ejecutar operaciones críticas directamente.
-6  Las tools controlan las acciones del agente.
-7  RAG reduce contexto innecesario y da info relevante.
-8  RAG no garantiza cero alucinaciones.
-9  Más agentes no significa mejor arquitectura.
-10 El modelo más potente no siempre es el mejor.
-11 Primero medí costos antes de optimizar.
-12 En producción necesitás observabilidad.
-13 Para acciones críticas: validación y posible aprobación humana.
-14 Las reglas de negocio viven en la aplicación, no en el modelo.
-15 La IA debe generar valor de negocio, no demostrar tecnología.`
+const QUINCE = `1.  No todo necesita IA.
+2.  No todo lo que necesita IA necesita un agente.
+3.  El prompt no es seguridad.
+4.  Los permisos deben estar en la arquitectura.
+5.  El LLM no debería ejecutar operaciones críticas directamente.
+6.  Las tools controlan las acciones del agente.
+7.  RAG reduce contexto innecesario y da info relevante.
+8.  RAG no garantiza cero alucinaciones.
+9.  Más agentes no significa mejor arquitectura.
+10. El modelo más potente no siempre es el mejor.
+11. Primero medí costos antes de optimizar.
+12. En producción necesitás observabilidad.
+13. Para acciones críticas: validación y posible aprobación humana.
+14. Las reglas de negocio viven en la aplicación, no en el modelo.
+15. La IA debe generar valor de negocio, no demostrar tecnología.`
 
 export function EntrevistaLesson() {
   return (
@@ -41,9 +39,34 @@ export function EntrevistaLesson() {
       tag="doc.md #XVII-XXVIII · todo el material"
       intro={
         <>
-          <pre className="whitespace-pre-wrap rounded-lg border bg-muted p-4 font-mono text-xs">{CORTAS}</pre>
-          <pre className="whitespace-pre-wrap rounded-lg border bg-muted p-4 font-mono text-xs">{QUINCE}</pre>
-          <p>
+          <div className="flex flex-col gap-3">
+            <Accordion
+              defaultOpen={true}
+              title={
+                <span className="font-semibold text-primary">
+                  Respuestas cortas para memorizar (#XXIII)
+                </span>
+              }
+            >
+              <pre className="whitespace-pre-wrap rounded-lg border bg-muted/50 p-4 font-mono text-xs leading-relaxed text-foreground">
+                {CORTAS}
+              </pre>
+            </Accordion>
+
+            <Accordion
+              defaultOpen={true}
+              title={
+                <span className="font-semibold text-primary">
+                  Las 15 ideas que debés recordar (#XXVIII)
+                </span>
+              }
+            >
+              <pre className="whitespace-pre-wrap rounded-lg border bg-muted/50 p-4 font-mono text-xs leading-relaxed text-foreground">
+                {QUINCE}
+              </pre>
+            </Accordion>
+          </div>
+          <p className="pt-2">
             <strong>Respuesta modelo (#XXVI)</strong> para &quot;diseñá una solución de IA&quot;: entender el
             proceso → separar determinista de IA → código/workflows/APIs para determinista → herramientas del
             agente + permisos → RAG si hay documentación → validaciones + aprobación humana en crítico →

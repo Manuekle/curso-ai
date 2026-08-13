@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { LessonShell } from "@/components/LessonShell"
+import { NumberPopIn } from "@/components/NumberPopIn"
 
 const SERVER_CODE = `// server/rag.ts — lo que corre en tu backend (#24)
 export async function embed(texts: string[]): Promise<number[][]> {
@@ -45,9 +46,21 @@ export function EmbeddingsLesson() {
     setResult(null)
     setCos(null)
     try {
+      const activeProvider = (localStorage.getItem("active-provider") as string) || "openrouter"
+      const apiKeys = JSON.parse(localStorage.getItem("api-keys") || "{}")
+      const config = { provider: activeProvider, apiKey: apiKeys[activeProvider] }
+
       const [emb, sim] = await Promise.all([
-        fetch("/api/demo/embed", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: ta }) }),
-        fetch("/api/demo/cosine", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ a: ta, b: tb }) }),
+        fetch("/api/demo/embed", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: ta, config }),
+        }),
+        fetch("/api/demo/cosine", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ a: ta, b: tb, config }),
+        }),
       ])
       if (!emb.ok || !sim.ok) throw new Error(`HTTP ${emb.status}/${sim.status}`)
       setResult(await emb.json())
@@ -136,14 +149,16 @@ export function EmbeddingsLesson() {
             <div className="flex flex-col gap-3">
               <div className="flex items-center gap-2">
                 <span className="text-sm">Similitud coseno:</span>
-                <Badge variant={cos > 0.5 ? "default" : cos > 0.2 ? "secondary" : "outline"}>{cos}</Badge>
+                <Badge variant={cos > 0.5 ? "default" : cos > 0.2 ? "secondary" : "outline"}>
+                  <NumberPopIn value={cos} />
+                </Badge>
                 <span className="text-xs text-muted-foreground">
                   {cos > 0.5 ? "semánticamente parecidos" : cos > 0.2 ? "levemente relacionados" : "sin relación clara"}
                 </span>
               </div>
               <div className="flex flex-col gap-1">
                 <p className="text-xs text-muted-foreground">
-                  Dimensión del vector: {result.dims} (texto: “{a}”)
+                  Dimensión del vector: <NumberPopIn value={result.dims} /> (texto: “{a}”)
                 </p>
                 <pre className="overflow-x-auto rounded-lg border bg-muted p-3 font-mono text-xs">
                   [{result.sample.join(", ")}, … {result.dims - result.sample.length} valores más]

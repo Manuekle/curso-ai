@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { LessonShell } from "@/components/LessonShell"
+import { Accordion } from "@/components/Accordion"
 
 const CASOS = [
   {
@@ -49,14 +50,24 @@ export function CasosLesson() {
             ¿qué permisos? → ¿cómo validamos? → ¿cómo escalar? → ¿cuánto cuesta? → ¿cómo monitorear? →
             producción.
           </p>
-          <div className="flex flex-col gap-3">
-            {CASOS.map((c) => (
-              <div key={c.n} className="flex flex-col gap-1 rounded-lg border p-4 text-sm">
-                <p className="">
-                  {c.n} — {c.t}
-                </p>
-                <p className="text-muted-foreground">{c.r}</p>
-              </div>
+          <div className="flex flex-col gap-2.5">
+            {CASOS.map((c, i) => (
+              <Accordion
+                key={c.n}
+                defaultOpen={i === 0}
+                title={
+                  <span className="flex items-center gap-2">
+                    <span className="font-semibold text-primary">{c.n}</span>
+                    <span className="text-muted-foreground font-normal">— {c.t}</span>
+                  </span>
+                }
+              >
+                <div className="flex flex-col gap-1.5 text-xs leading-relaxed pt-1 text-muted-foreground">
+                  <p>
+                    <strong className="text-foreground">Razonamiento & Solución:</strong> {c.r}
+                  </p>
+                </div>
+              </Accordion>
             ))}
           </div>
         </>

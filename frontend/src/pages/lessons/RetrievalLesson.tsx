@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { LessonShell } from "@/components/LessonShell"
+import { NumberPopIn } from "@/components/NumberPopIn"
 
 const SERVER_CODE = `// server/rag.ts — lo que corre en tu backend (#25, #28)
 function search(queryVec: number[], k = 4): Doc[] {
@@ -50,8 +51,12 @@ function HitRow({ h }: { h: RerankHit }) {
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-mono text-xs">{h.id}</span>
         <Badge variant="secondary">owner: {h.owner}</Badge>
-        <Badge variant="outline">coseno: {h.score}</Badge>
-        <Badge variant="outline">léxico: {h.overlap}</Badge>
+        <Badge variant="outline">
+          coseno: <NumberPopIn value={h.score} />
+        </Badge>
+        <Badge variant="outline">
+          léxico: <NumberPopIn value={h.overlap} />
+        </Badge>
         <Badge variant={h.permitted ? "default" : "destructive"}>
           {h.permitted ? "permitido" : "bloqueado"}
         </Badge>
@@ -75,10 +80,14 @@ export function RetrievalLesson() {
     setHits(null)
     setRerank(null)
     try {
+      const activeProvider = (localStorage.getItem("active-provider") as string) || "openrouter"
+      const apiKeys = JSON.parse(localStorage.getItem("api-keys") || "{}")
+      const config = { provider: activeProvider, apiKey: apiKeys[activeProvider] }
+
       const res = await fetch("/api/demo/retrieve", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question, user }),
+        body: JSON.stringify({ question, user, config }),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       setHits((await res.json()).hits)
@@ -95,10 +104,14 @@ export function RetrievalLesson() {
     setHits(null)
     setRerank(null)
     try {
+      const activeProvider = (localStorage.getItem("active-provider") as string) || "openrouter"
+      const apiKeys = JSON.parse(localStorage.getItem("api-keys") || "{}")
+      const config = { provider: activeProvider, apiKey: apiKeys[activeProvider] }
+
       const res = await fetch("/api/demo/rerank", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question, user }),
+        body: JSON.stringify({ question, user, config }),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       setRerank(await res.json())
@@ -192,7 +205,8 @@ export function RetrievalLesson() {
           {hits && (
             <div className="flex flex-col gap-2">
               <p className="text-xs text-muted-foreground">
-                {hits.filter((h) => h.permitted).length} de {hits.length} resultados llegarían al LLM como {user}
+                <NumberPopIn value={hits.filter((h) => h.permitted).length} /> de{" "}
+                <NumberPopIn value={hits.length} /> resultados llegarían al LLM como {user}
               </p>
               {hits.map((h) => (
                 <div
@@ -202,7 +216,9 @@ export function RetrievalLesson() {
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-xs">{h.id}</span>
                     <Badge variant="secondary">owner: {h.owner}</Badge>
-                    <Badge variant="outline">score: {h.score}</Badge>
+                    <Badge variant="outline">
+                      score: <NumberPopIn value={h.score} />
+                    </Badge>
                     <Badge variant={h.permitted ? "default" : "destructive"}>
                       {h.permitted ? "permitido" : "bloqueado"}
                     </Badge>
@@ -234,7 +250,8 @@ export function RetrievalLesson() {
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                {rerank.reranked.filter((h) => h.permitted).length} de {rerank.reranked.length} llegarían al LLM como {user}
+                <NumberPopIn value={rerank.reranked.filter((h) => h.permitted).length} /> de{" "}
+                <NumberPopIn value={rerank.reranked.length} /> llegarían al LLM como {user}
               </p>
             </div>
           )}

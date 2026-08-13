@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { LessonShell } from "@/components/LessonShell"
+import { NumberPopIn } from "@/components/NumberPopIn"
 
 const ORCH_CODE = `// server/orchestrator.ts — sistemas multiagente reales de esta web
 // 1. agentes especializados corren en paralelo (#75 reduce latencia)
@@ -155,7 +156,7 @@ export function MultiagentesLesson() {
                 {idempotent && <Badge variant="outline">idempotente (#41): ya decidida</Badge>}
               </div>
               <p className="text-lg font-semibold">
-                ${proposal.amount.toLocaleString("es-AR")} → {proposal.provider}
+                $<NumberPopIn value={proposal.amount.toLocaleString("es-AR")} /> → {proposal.provider}
               </p>
               <ul className="flex flex-col gap-1 text-xs text-muted-foreground">
                 {proposal.checks.map((c) => (

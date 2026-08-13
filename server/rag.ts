@@ -1,8 +1,8 @@
 // server/rag.ts
-// RAG completo (doc #22-28): chunk → embedding → vector store → retrieve → filtro permisos → LLM.
+// RAG completo (doc #22-28): chunk → embedding → vector store → retrieve → filtro umbral → filtro permisos → LLM.
 // Store en memoria (local, sin infra). Para prod: pgvector / Pinecone / Qdrant (#25).
 
-import { chatCompletion, createEmbedding, Provider } from "./llm.js";
+import { chatCompletion, createEmbedding, getDefaultProvider, Provider } from "./llm.js";
 
 // ── 1. CHUNKING (#23) ──
 export function chunkText(text: string, size = 800, overlap = 100): string[] {
@@ -14,13 +14,14 @@ export function chunkText(text: string, size = 800, overlap = 100): string[] {
 }
 
 // ── 2. EMBEDDINGS (#24) ──
-export async function embed(texts: string[], apiKey?: string, provider: Provider = "openai"): Promise<number[][]> {
-  const config = { provider, apiKey };
-  return Promise.all(texts.map(text => createEmbedding(config, text)));
+export async function embed(texts: string[], apiKey?: string, provider?: Provider): Promise<number[][]> {
+  const activeProvider = provider || getDefaultProvider();
+  const config = { provider: activeProvider, apiKey };
+  return Promise.all(texts.map((text) => createEmbedding(config, text)));
 }
 
 // ── 3. VECTOR STORE en memoria (#25) ──
-interface Doc {
+export interface Doc {
   id: string;
   text: string;
   owner: string; // dueño del documento → base del filtro de permisos (#28)
@@ -28,30 +29,50 @@ interface Doc {
 }
 export const store: Doc[] = [];
 
-export async function indexDocument(id: string, text: string, owner: string): Promise<number> {
+export async function indexDocument(
+  id: string,
+  text: string,
+  owner: string,
+  apiKey?: string,
+  provider?: Provider
+): Promise<number> {
   const chunks = chunkText(text);
-  const vectors = await embed(chunks); // Assuming default 'openai' provider for indexing
+  const vectors = await embed(chunks, apiKey, provider);
   chunks.forEach((c, i) => store.push({ id: `${id}:${i}`, text: c, owner, vector: vectors[i] }));
   return chunks.length;
 }
 
 // ── 4. BÚSQUEDA VECTORIAL (cosine) ──
 export function cosine(a: number[], b: number[]): number {
+  if (!a || !b || a.length !== b.length) return 0;
   const dot = a.reduce((s, x, i) => s + x * b[i]!, 0);
   const norm = (v: number[]) => Math.sqrt(v.reduce((s, x) => s + x * x, 0));
-  return dot / (norm(a) * norm(b));
+  const denom = norm(a) * norm(b);
+  return denom === 0 ? 0 : dot / denom;
 }
 
-function search(queryVec: number[], k = 4): Doc[] {
+export interface ScoredDoc {
+  doc: Doc;
+  score: number;
+  passedThreshold: boolean;
+}
+
+export function searchScored(queryVec: number[], k = 4, threshold = 0.20): ScoredDoc[] {
   return store
-    .map((d) => ({ d, score: cosine(queryVec, d.vector) }))
+    .map((d) => {
+      const rawScore = cosine(queryVec, d.vector);
+      const score = Number(rawScore.toFixed(4));
+      return {
+        doc: d,
+        score,
+        passedThreshold: score >= threshold,
+      };
+    })
     .sort((a, b) => b.score - a.score)
-    .slice(0, k)
-    .map((x) => x.d);
+    .slice(0, k);
 }
 
 // ── 0. AUTORIZACIÓN (doc #29) — quién puede ver qué ──
-// user → lista de owners permitidos. Ejemplo minimalista de RBAC (#32):
 const ACL: Record<string, string[]> = {
   admin: ["*"], // admin ve todo
   demo: ["rh", "inventario"],
@@ -63,54 +84,141 @@ export function userCanAccess(user: string, owner: string): boolean {
   return allow.includes("*") || allow.includes(owner);
 }
 
-// ── 5. CONSULTA: pregunta → embedding → retrieve → FILTRO ANTES del LLM → LLM ──
+// ── 5. CONSULTA: pregunta → embedding → retrieve → FILTRO UMBRAL → FILTRO PERMISOS → LLM ──
+export interface ScoredHit {
+  id: string;
+  owner: string;
+  score: number;
+  passedThreshold: boolean;
+  permitted: boolean;
+  snippet: string;
+}
+
 export interface RagResult {
   answer: string;
   sources: string[];
   hits: number;
   allowedHits: number;
+  threshold: number;
+  totalDocs: number;
+  dimensions: number;
+  latencyMs: number;
+  scoredHits: ScoredHit[];
+  pythonLog: string;
 }
 
-export async function ask(question: string, user = "demo", apiKey?: string, provider: Provider = "openai"): Promise<RagResult> {
-  const [qVec] = await embed([question], apiKey, provider); // un embedding por pregunta
-  const hits = search(qVec);
+export interface AskOptions {
+  threshold?: number;
+  topK?: number;
+}
 
-  // #28 — PERMISSION FILTER ANTES de que el documento llegue al LLM (crítico)
-  const allowed = hits.filter((d) => userCanAccess(user, d.owner));
+export async function ask(
+  question: string,
+  user = "demo",
+  apiKey?: string,
+  provider?: Provider,
+  options?: AskOptions
+): Promise<RagResult> {
+  const startTime = Date.now();
+  const effectiveProvider = provider || getDefaultProvider();
+  const threshold = options?.threshold ?? 0.20;
+  const topK = options?.topK ?? 4;
 
-  if (!allowed.length) {
-    return {
-      answer: "No encontré información a la que tengas acceso.",
-      sources: [],
-      hits: hits.length,
-      allowedHits: 0,
-    };
+  const [qVec] = await embed([question], apiKey, effectiveProvider);
+  const embTime = Date.now() - startTime;
+  const vectorDim = qVec.length;
+
+  const candidates = searchScored(qVec, Math.max(topK, 5), threshold);
+  const scoredHits: ScoredHit[] = candidates.map(({ doc, score, passedThreshold }) => ({
+    id: doc.id,
+    owner: doc.owner,
+    score,
+    passedThreshold,
+    permitted: userCanAccess(user, doc.owner),
+    snippet: doc.text.slice(0, 140),
+  }));
+
+  const passedThresholdCandidates = candidates.filter((c) => c.passedThreshold);
+  const allowed = passedThresholdCandidates.filter((c) => userCanAccess(user, c.doc.owner)).slice(0, topK);
+
+  let answer = "";
+  let llmTime = 0;
+
+  if (passedThresholdCandidates.length === 0) {
+    const highestScore = candidates[0]?.score ?? 0;
+    answer = `No se encontraron documentos relevantes para tu consulta con el umbral actual (${threshold}). La máxima similitud encontrada fue de ${highestScore}. Probá reducir el umbral de similitud o reformular la pregunta.`;
+  } else if (allowed.length === 0) {
+    answer = `Se encontraron documentos relacionados pero no tienes permisos de acceso (usuario: "${user}"). Documentos bloqueados por política de seguridad: ${passedThresholdCandidates.map((c) => `[${c.doc.id} - owner: ${c.doc.owner}]`).join(", ")}.`;
+  } else {
+    const context = allowed.map((c) => `[fuente: ${c.doc.id}]\n${c.doc.text}`).join("\n\n---\n\n");
+    const llmStart = Date.now();
+
+    const res = await chatCompletion(
+      { provider: effectiveProvider, apiKey },
+      {
+        temperature: 0,
+        messages: [
+          {
+            role: "system",
+            content:
+              "Respondé SOLO con base en el contexto dado, en español. " +
+              "Mencioná la fuente citando [fuente: ...]. " +
+              "Regla crítica (#66): si el contexto no responde la pregunta, decí 'No encontré suficiente información para responder con seguridad.' " +
+              "No inventes datos.",
+          },
+          { role: "user", content: `Contexto:\n${context}\n\nPregunta: ${question}` },
+        ],
+      }
+    );
+    llmTime = Date.now() - llmStart;
+    answer = res.choices[0]?.message.content ?? "";
   }
 
-  const context = allowed.map((d) => `[fuente: ${d.id}]\n${d.text}`).join("\n\n---\n\n");
+  const totalLatencyMs = Date.now() - startTime;
 
-  const res = await chatCompletion(
-    { provider, apiKey },
-    {
-      temperature: 0,
-      messages: [
-        {
-          role: "system",
-          content:
-            "Respondé SOLO con base en el contexto dado, en español. " +
-            "Mencioná la fuente citando [fuente: ...]. " +
-            "Regla crítica (#66): si el contexto no responde la pregunta, decí 'No encontré suficiente información para responder con seguridad.' " +
-            "No inventes datos.",
-        },
-        { role: "user", content: `Contexto:\n${context}\n\nPregunta: ${question}` },
-      ],
-    }
+  // Generación de log estilo terminal de Python (LangChain / LlamaIndex / Rich logger)
+  const logLines: string[] = [
+    `[AI Pipeline] Mode: RAG | Provider: ${effectiveProvider} | Vector Store: InMemory (Docs: ${store.length})`,
+    `[Embedding] Query Vector: ${vectorDim} dims | Latency: ${embTime}ms`,
+    `[Vector Search] Top-${topK} candidates | Similitud Coseno | Umbral (Threshold): ${threshold.toFixed(2)}`,
+    `--------------------------------------------------------------------------------`,
+  ];
+
+  if (candidates.length === 0) {
+    logLines.push(`  (Store vacía o sin chunks indexados)`);
+  } else {
+    candidates.forEach((c, idx) => {
+      const statusTh = c.passedThreshold ? `PASSED (>= ${threshold.toFixed(2)})` : `FILTERED (< ${threshold.toFixed(2)})`;
+      const isPermitted = userCanAccess(user, c.doc.owner);
+      const statusRbac = isPermitted ? `RBAC: ALLOWED (${c.doc.owner})` : `RBAC: DENIED (${c.doc.owner})`;
+      logLines.push(
+        `  #${idx + 1}  [Cosine: ${c.score.toFixed(4)}] ${c.doc.id.padEnd(24)} -> [${statusTh}] -> [${statusRbac}]`
+      );
+    });
+  }
+
+  logLines.push(`--------------------------------------------------------------------------------`);
+  logLines.push(
+    `[Context Injection] ${allowed.length} chunk(s) seleccionados | Chars: ${allowed.reduce((s, c) => s + c.doc.text.length, 0)} (~${Math.round(allowed.reduce((s, c) => s + c.doc.text.length, 0) / 4)} tokens)`
   );
+  if (llmTime > 0) {
+    logLines.push(`[LLM Generation] Temperature: 0.0 | Latency: ${llmTime}ms`);
+  }
+  logLines.push(`[Execution Summary] Total Latency: ${totalLatencyMs}ms | Status: 200 OK | Fuentes: [${allowed.map((c) => c.doc.id).join(", ")}]`);
+
+  const pythonLog = logLines.join("\n");
 
   return {
-    answer: res.choices[0]?.message.content ?? "",
-    sources: allowed.map((d) => d.id),
-    hits: hits.length,
+    answer,
+    sources: allowed.map((c) => c.doc.id),
+    hits: passedThresholdCandidates.length,
     allowedHits: allowed.length,
+    threshold,
+    totalDocs: store.length,
+    dimensions: vectorDim,
+    latencyMs: totalLatencyMs,
+    scoredHits,
+    pythonLog,
   };
 }
+

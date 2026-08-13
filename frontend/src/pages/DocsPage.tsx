@@ -412,7 +412,7 @@ export function DocsPage() {
     <article className="mx-auto w-full">
       {content}
       <aside className="fixed top-1/2 right-5 z-40 hidden max-h-[70vh] w-56 -translate-y-1/2 flex-col gap-3 overflow-y-auto rounded-2xl border border-border bg-card/80 p-3 backdrop-blur 2xl:flex">
-        <p className="px-2 text-[11px] font-semibold tracking-widest text-muted-foreground uppercase">En esta página</p>
+        <p className="px-2 text-[11px] font-medium text-muted-foreground">En esta página</p>
         <nav className="flex flex-col gap-0.5">
           {toc.map((t) => (
             <a

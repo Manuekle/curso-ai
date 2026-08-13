@@ -1,10 +1,11 @@
 import { LessonShell } from "@/components/LessonShell"
+import { Accordion } from "@/components/Accordion"
 
 const SOLUCIONES = [
   {
     n: "Ejercicio 1",
     t: "20.000 correos/día → clasificar en Ventas/Soporte/Finanzas/RRHH/Spam",
-    ep: "Workflow o IA?",
+    ep: "¿Workflow o IA?",
     r: "Workflow + modelo de clasificación. No agente: objetivo acotado (#13 reglas: workflow + IA simple). Mide: accuracy, precision, recall, F1.",
   },
   {
@@ -92,18 +93,23 @@ export function EjerciciosLesson() {
             Método del doc: <strong>intentá resolver sobre papel antes de abrir la solución</strong>. Cada
             bloque tiene la pregunta clave y la respuesta esperada — lo que un entrevistador quiere escuchar.
           </p>
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2.5">
             {SOLUCIONES.map((s) => (
-              <details key={s.n} className="rounded-lg border p-4 text-sm">
-                <summary className="cursor-pointer">
-                  {s.n} — {s.t}
-                </summary>
-                <div className="mt-2 flex flex-col gap-1 text-muted-foreground">
+              <Accordion
+                key={s.n}
+                title={
+                  <span className="flex items-center gap-2">
+                    <span className="font-semibold text-primary">{s.n}</span>
+                    <span className="text-muted-foreground font-normal">— {s.t}</span>
+                  </span>
+                }
+              >
+                <div className="flex flex-col gap-1.5 text-xs leading-relaxed pt-1 text-muted-foreground">
                   <p>
                     <strong className="text-foreground">{s.ep}</strong> {s.r}
                   </p>
                 </div>
-              </details>
+              </Accordion>
             ))}
           </div>
         </>

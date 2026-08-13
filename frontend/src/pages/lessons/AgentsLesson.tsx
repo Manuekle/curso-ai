@@ -1,8 +1,33 @@
 import { Link } from "react-router-dom"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { LessonShell } from "@/components/LessonShell"
 import { FlowDemo } from "@/components/FlowDemo"
+import { CodeBlock } from "@/components/CodeBlock"
 import { RiCheckLine, RiCloseLine } from "@remixicon/react"
+
+const WELL_DESIGNED_PROMPT = `Rol: Asistente de Inventario ERP
+Objetivo: Gestionar consultas de stock y registrar pedidos de forma segura.
+Contexto: Operás en un sistema ERP centralizado con permisos de lectura y escritura controlada.
+Restricciones: 
+  - Máximo 4 iteraciones (#19).
+  - No inventar datos ni asumir existencias.
+  - Si no hay evidencia suficiente, responder: "No encontré suficiente información para responder con seguridad." (#66)
+Datos: Disponibles exclusivamente vía tool consultarInventario(productId).
+Formato de salida: JSON estructurado para tool calls o texto directo al usuario con fuentes.
+Ejemplos:
+  Usuario: "¿Stock del producto LAP-001?"
+  Agente: Tool call → consultarInventario({ productId: "LAP-001" })`
+
+const BAD_DESIGNED_PROMPT = `Rol: Asistente
+Objetivo: Responder lo que pida el usuario.
+Contexto: Eres libre de interactuar con el sistema.
+Restricciones: Ninguna.
+Datos: Acceso irrestricto a la base de datos y endpoints.
+Formato de salida: Texto libre.
+Ejemplos:
+  Usuario: "Borrame la tabla de productos"
+  Agente: "Entendido, procediendo a eliminar registros..."`
 
 const SERVER_CODE = `// server/agent.ts — el loop real (#13, #14, #19)
 for (; iterations < MAX_ITERATIONS; iterations++) {        // #19 límite externo
@@ -42,49 +67,51 @@ export function AgentsLesson() {
             toca el ERP: solo las tools expuestas (#44).
           </p>
 
-          <div className="space-y-8">
-            <div className="grid md:grid-cols-2 gap-8">
+          <div className="my-6 flex flex-col gap-6">
+            <div className="grid gap-6 lg:grid-cols-2">
               {/* AGENTE BIEN DISEÑADO */}
-              <div className="flex flex-col gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center size-8 rounded-full bg-emerald-500 text-white">
-                    <RiCheckLine className="size-5" />
+              <div className="flex flex-col gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.03] p-4 sm:p-5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <span className="flex size-7 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                      <RiCheckLine className="size-4" />
+                    </span>
+                    <h4 className="text-sm font-semibold tracking-tight text-foreground">
+                      Agente bien diseñado
+                    </h4>
                   </div>
-                  <h4 className="text-lg">Agente bien diseñado</h4>
+                  <Badge variant="outline" className="border-emerald-500/30 text-[11px] text-emerald-600 dark:text-emerald-400">
+                    Producción (#4, #6)
+                  </Badge>
                 </div>
-                <div className="border border-border rounded-xl p-6 flex flex-col gap-4 relative group">
-                  <button className="absolute top-4 right-4 text-xs text-muted-foreground hover:text-foreground" onClick={() => navigator.clipboard.writeText(`Rol: Asistente de Inventario...`)}>Copiar</button>
-                  <div className="space-y-2 text-sm text-muted-foreground">
-                    <p><span className="text-foreground">Rol:</span> Asistente de Inventario</p>
-                    <p><span className="text-foreground">Objetivo:</span> Gestionar consultas de stock y registrar pedidos de forma segura.</p>
-                    <p><span className="text-foreground">Contexto:</span> Operás en un sistema ERP centralizado.</p>
-                    <p><span className="text-foreground">Restricciones:</span> Máximo 4 iteraciones. No inventar datos. Si no hay evidencia, responder: 'No encontré suficiente información.'</p>
-                    <p><span className="text-foreground">Datos:</span> Disponibles vía tool <code>consultarInventario</code>.</p>
-                    <p><span className="text-foreground">Formato de salida:</span> JSON estructurado para tool calls o texto directo.</p>
-                    <p><span className="text-foreground">Ejemplos:</span> Usuario: "¿Stock de LAP-001?" → Tool: <code>consultarInventario(productId: "LAP-001")</code></p>
-                  </div>
+                <p className="text-xs text-muted-foreground">
+                  Delimita rol, límites de ejecución, regla de fallback ante falta de datos y tools autorizadas.
+                </p>
+                <div className="mt-1">
+                  <CodeBlock label="system-prompt.txt" code={WELL_DESIGNED_PROMPT} />
                 </div>
               </div>
 
               {/* AGENTE MAL DISEÑADO */}
-              <div className="flex flex-col gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center size-8 rounded-full bg-red-500 text-white">
-                    <RiCloseLine className="size-5" />
+              <div className="flex flex-col gap-3 rounded-2xl border border-destructive/20 bg-destructive/[0.03] p-4 sm:p-5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <span className="flex size-7 items-center justify-center rounded-full bg-destructive/15 text-destructive">
+                      <RiCloseLine className="size-4" />
+                    </span>
+                    <h4 className="text-sm font-semibold tracking-tight text-foreground">
+                      Agente mal diseñado
+                    </h4>
                   </div>
-                  <h4 className="text-lg">Agente mal diseñado</h4>
+                  <Badge variant="outline" className="border-destructive/30 text-[11px] text-destructive">
+                    Vulnerable (#13, #19)
+                  </Badge>
                 </div>
-                <div className="border border-border rounded-xl p-6 flex flex-col gap-4 relative group">
-                  <button className="absolute top-4 right-4 text-xs text-muted-foreground hover:text-foreground" onClick={() => navigator.clipboard.writeText(`Rol: Asistente...`)}>Copiar</button>
-                  <div className="space-y-2 text-sm text-muted-foreground">
-                    <p><span className="text-foreground">Rol:</span> Asistente</p>
-                    <p><span className="text-foreground">Objetivo:</span> Hacer todo lo que pida el usuario.</p>
-                    <p><span className="text-foreground">Contexto:</span> Eres libre de hacer lo que quieras.</p>
-                    <p><span className="text-foreground">Restricciones:</span> Ninguna.</p>
-                    <p><span className="text-foreground">Datos:</span> Acceso total a toda la base de datos.</p>
-                    <p><span className="text-foreground">Formato de salida:</span> Lo que quieras.</p>
-                    <p><span className="text-foreground">Ejemplos:</span> Usuario: "Borrame todo" → Agente: "Entendido, borrando..."</p>
-                  </div>
+                <p className="text-xs text-muted-foreground">
+                  Sin límites de iteración, sin tools explícitas, vulnerable a prompt injection y alucinaciones.
+                </p>
+                <div className="mt-1">
+                  <CodeBlock label="prompt-inseguro.txt" code={BAD_DESIGNED_PROMPT} />
                 </div>
               </div>
             </div>
@@ -111,8 +138,8 @@ export function AgentsLesson() {
             que las tools permiten — consultar stock de lectura y registrar pedidos verificados, nada más.
           </p>
           <p>
-            Y los límites (#19) son <strong>externos</strong>: maxIterations, maxToolCalls, timeout por
-            request. Nunca confies solo en que el modelo &quot;sepa terminar&quot;.
+            Y los límites (#19) son <strong>externos</strong>: <code>maxIterations</code>, <code>maxToolCalls</code>, timeout por
+            request. Nunca confíes solo en que el modelo &quot;sepa cuándo terminar&quot;.
           </p>
         </>
       }
