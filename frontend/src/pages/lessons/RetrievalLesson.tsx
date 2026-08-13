@@ -17,7 +17,15 @@ function search(queryVec: number[], k = 4): Doc[] {
 }
 
  // #28 — PERMISSION FILTER ANTES de que el documento llegue al LLM
- const allowed = hits.filter((d) => userCanAccess(user, d.owner));`
+ const allowed = hits.filter((d) => userCanAccess(user, d.owner));
+
+// ── Producción (ilustrativo): hybrid + rerank ───────────────────────────────
+// 1. Top-K AMPLIO (ej. 50) mezclando semántica (embeddings) y léxico (BM25)
+//    → los códigos y siglas que la semántica pierde, el léxico los rescata.
+// 2. Filtro de permisos sobre los candidatos (metadatos: owner/tenant).
+// 3. Reranker (cross-encoder) reordena comparando pregunta vs candidato.
+// 4. Solo el top-N final (ej. 5) entra al contexto del LLM.
+// /api/demo/rerank simula el paso 1→4 con una señal léxica de solape de tokens.`
 
 interface Hit {
   id: string
@@ -27,10 +35,37 @@ interface Hit {
   snippet: string
 }
 
+interface RerankHit extends Hit {
+  overlap: number
+}
+
+interface RerankData {
+  raw: RerankHit[]
+  reranked: RerankHit[]
+}
+
+function HitRow({ h }: { h: RerankHit }) {
+  return (
+    <div className="flex flex-col gap-1 rounded-lg border p-3 text-sm">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-mono text-xs">{h.id}</span>
+        <Badge variant="secondary">owner: {h.owner}</Badge>
+        <Badge variant="outline">coseno: {h.score}</Badge>
+        <Badge variant="outline">léxico: {h.overlap}</Badge>
+        <Badge variant={h.permitted ? "default" : "destructive"}>
+          {h.permitted ? "permitido" : "bloqueado"}
+        </Badge>
+      </div>
+      <p className="text-xs text-muted-foreground">{h.snippet}…</p>
+    </div>
+  )
+}
+
 export function RetrievalLesson() {
   const [question, setQuestion] = useState("¿Cada cuánto se rotan las contraseñas?")
   const [user, setUser] = useState("demo")
   const [hits, setHits] = useState<Hit[] | null>(null)
+  const [rerank, setRerank] = useState<RerankData | null>(null)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
@@ -38,6 +73,7 @@ export function RetrievalLesson() {
     setLoading(true)
     setError("")
     setHits(null)
+    setRerank(null)
     try {
       const res = await fetch("/api/demo/retrieve", {
         method: "POST",
@@ -53,10 +89,30 @@ export function RetrievalLesson() {
     }
   }
 
+  async function runRerank() {
+    setLoading(true)
+    setError("")
+    setHits(null)
+    setRerank(null)
+    try {
+      const res = await fetch("/api/demo/rerank", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question, user }),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      setRerank(await res.json())
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <LessonShell
-      title="Búsqueda vectorial: top-K con scores (#25)"
-      tag="doc.md #25 · #28 · server/rag.ts"
+      title="Retrieval: top-K, permisos, hybrid y rerank (#25, #28)"
+      tag="doc.md #25 · #28 · “Reranking y búsqueda híbrida” · server/rag.ts"
       intro={
         <>
           <p>
@@ -69,14 +125,22 @@ export function RetrievalLesson() {
             va <strong>después del retrieval y antes del LLM</strong> (#28): el documento nunca llega al modelo.
           </p>
           <p>
-            En producción la store es una base vectorial (pgvector, Pinecone, Qdrant) con búsqueda por
-            índice tipo ANN; acá es un array en memoria con fuerza bruta — para aprender es ideal.
+            En producción la store es una base vectorial (pgvector, Pinecone, Qdrant) con índice tipo ANN
+            (HNSW/IVF) y <strong>metadata filtering</strong>; acá es un array en memoria con fuerza bruta — para
+            aprender es ideal.
+          </p>
+          <p>
+            El top-K crudo no siempre es el mejor contexto: la semántica pierde códigos y siglas que la
+            <strong> búsqueda léxica</strong> (BM25) rescata, y el orden por coseno no es orden por relevancia.
+            Por eso producción usa <strong>hybrid search + reranker</strong> (cross-encoder): recuperar K amplio,
+            filtrar permisos, reordenar y recién ahí armar contexto. Probalo abajo: el rerank híbrido
+            simulado reordena el top 8 con señal léxica.
           </p>
         </>
       }
-      code={{ label: "La búsqueda y el filtro reales", code: SERVER_CODE }}
-      interview="Tienen 500.000 documentos y un usuario solo puede ver 2.500. ¿Dónde aplicás el filtro de permisos y por qué?"
-      solution="En el backend, en el retriever, ANTES de que el contexto llegue al LLM (#28). Nunca en el prompt ni en el modelo: el prompt no es seguridad y el modelo no tiene por qué saber el ACL. Flujo: retrieval top-K → filtro por owner permitido → recién ahí armar contexto → LLM. El documento del owner IT jamás entra al modelo."
+      code={{ label: "La búsqueda, el filtro y el pipeline de producción", code: SERVER_CODE }}
+      interview="Recuperás top-K por embeddings y la respuesta es mala para consultas con códigos de producto (ej. 'SKU-4412'). ¿Qué cambiás? ¿Y dónde entra el filtro de permisos en un pipeline con reranker?"
+      solution="Hybrid search: combinar embeddings con búsqueda léxica (BM25/full-text) porque los códigos y acrónimos no tienen representación semántica buena; además probar query rewriting y reranker (cross-encoder) sobre un top-K amplio. Orden del pipeline: retrieval amplio → metadata filter (owner/tenant) → rerank sobre permitidos → top-N → LLM (#28). El filtro va ANTES del rerank y del LLM: el modelo nunca ve documentos no autorizados, sin importar qué tan relevantes parezcan."
       prev={{ to: "/aprender/embeddings", label: "Embeddings" }}
       next={{ to: "/aprender/rag", label: "RAG" }}
     >
@@ -109,9 +173,12 @@ export function RetrievalLesson() {
               </div>
             </div>
           </div>
-          <div>
+          <div className="flex gap-2">
             <Button onClick={run} disabled={loading || !question}>
               {loading ? "Buscando…" : "Buscar top 5"}
+            </Button>
+            <Button variant="secondary" onClick={runRerank} disabled={loading || !question}>
+              {loading ? "Rerankando…" : "Top 8 → rerank híbrido"}
             </Button>
           </div>
 
@@ -143,6 +210,32 @@ export function RetrievalLesson() {
                   <p className="text-xs text-muted-foreground">{h.snippet}…</p>
                 </div>
               ))}
+            </div>
+          )}
+
+          {rerank && (
+            <div className="flex flex-col gap-3">
+              <p className="text-xs text-muted-foreground">
+                Top 8 por coseno → top 5 con señal léxica (solape de tokens). El reranker real (cross-encoder)
+                hace lo mismo con un modelo dedicado.
+              </p>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="flex flex-col gap-2">
+                  <p className="text-sm font-medium">Top 8 crudo (coseno)</p>
+                  {rerank.raw.map((h) => (
+                    <HitRow key={h.id} h={h} />
+                  ))}
+                </div>
+                <div className="flex flex-col gap-2">
+                  <p className="text-sm font-medium">Top 5 reranked (coseno + léxico)</p>
+                  {rerank.reranked.map((h) => (
+                    <HitRow key={h.id} h={h} />
+                  ))}
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {rerank.reranked.filter((h) => h.permitted).length} de {rerank.reranked.length} llegarían al LLM como {user}
+              </p>
             </div>
           )}
         </CardContent>
