@@ -494,7 +494,12 @@ function AppShell() {
         </aside>
 
         <main className="min-w-0 flex-1 px-8 md:px-0">
-          <div className="mx-auto w-full max-w-[920px] pt-14 pb-32">
+          <div
+            className={cn(
+              "mx-auto w-full pt-14 pb-32",
+              location.pathname.startsWith("/docs") ? "max-w-[1240px]" : "max-w-[920px]"
+            )}
+          >
             <AppRoutes />
           </div>
         </main>

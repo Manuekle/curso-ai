@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { Link } from "react-router-dom"
-import { RiArrowRightLine } from "@remixicon/react"
+import {
+  RiArrowDownSLine,
+  RiArrowRightLine,
+  RiArrowUpSLine,
+  RiCloseLine,
+  RiListUnordered,
+  RiSearchLine,
+} from "@remixicon/react"
+import { cn } from "@/lib/utils"
 import { CodeBlock } from "@/components/CodeBlock"
 import docSource from "../content/doc.md?raw"
 
@@ -12,10 +20,6 @@ function slugify(text: string): string {
     .replace(/\s+/g, "-")
 }
 
-// Repeated headings (e.g. "Preguntas", "Ejemplo") would otherwise collide on
-// the same slug, breaking anchor navigation and React keys. Assign one
-// deduped id per heading line, in document order, shared by the TOC and the
-// rendered content so both agree on the same ids.
 function computeHeadingIds(source: string): string[] {
   const lines = source.split("\n")
   const counts = new Map<string, number>()
@@ -31,11 +35,6 @@ function computeHeadingIds(source: string): string[] {
 
 const MERMAID_URL = "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs"
 
-// Mermaid's "base" theme runs its own color math (lighten/darken via khroma)
-// on themeVariables, so it can't take raw `var(--foo)` strings, and it can't
-// parse `oklch(...)` either (our light-mode palette uses oklch). Resolve each
-// CSS custom property through a canvas 2D context, which always normalizes
-// whatever color syntax it's given down to a plain "rgba(...)" string.
 function resolveColorVar(name: string): string {
   const probe = document.createElement("span")
   probe.style.color = `var(${name})`
@@ -141,23 +140,57 @@ function MermaidBlock({ code }: { code: string }) {
 }
 
 function useScrollSpy(ids: string[]) {
-  const [active, setActive] = useState<string | null>(null)
+  const [activeId, setActiveId] = useState<string | null>(null)
+  const [progress, setProgress] = useState<number>(0)
+
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) setActive(entry.target.id)
+    let tick = false
+
+    function update() {
+      const scrollY = window.scrollY
+      const totalScrollable = document.documentElement.scrollHeight - window.innerHeight
+      if (totalScrollable > 0) {
+        const pct = Math.min(100, Math.max(0, (scrollY / totalScrollable) * 100))
+        setProgress(Math.round(pct))
+      } else {
+        setProgress(0)
+      }
+
+      const targetY = scrollY + 120
+      let currentActive: string | null = null
+
+      for (let i = ids.length - 1; i >= 0; i--) {
+        const el = document.getElementById(ids[i])
+        if (el && el.offsetTop <= targetY) {
+          currentActive = ids[i]
+          break
         }
-      },
-      { rootMargin: "-80px 0px -70% 0px" }
-    )
-    for (const id of ids) {
-      const el = document.getElementById(id)
-      if (el) observer.observe(el)
+      }
+
+      if (!currentActive && ids.length > 0) {
+        currentActive = ids[0]
+      }
+
+      setActiveId(currentActive)
+      tick = false
     }
-    return () => observer.disconnect()
+
+    function handleScroll() {
+      if (!tick) {
+        window.requestAnimationFrame(update)
+        tick = true
+      }
+    }
+
+    window.addEventListener("scroll", handleScroll, { passive: true })
+    const timer = setTimeout(update, 100)
+    return () => {
+      window.removeEventListener("scroll", handleScroll)
+      clearTimeout(timer)
+    }
   }, [ids])
-  return active
+
+  return { activeId, progress }
 }
 
 function inline(text: string, keyBase: number): ReactNode {
@@ -243,26 +276,26 @@ function parseDoc(source: string, headingIds: string[]): ReactNode[] {
         nodes.push(
           <div key={key++} className="my-6 overflow-x-auto">
             <table className="w-full border-collapse text-left text-sm">
-            <thead>
-              <tr>
-                {rows[0].map((c, j) => (
-                  <th key={j} className="border-b border-border pb-2 pr-4 font-normal text-muted-foreground">
-                    {inline(c, j)}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.slice(1).map((r, j) => (
-                <tr key={j}>
-                  {r.map((c, k) => (
-                    <td key={k} className="border-b border-border/60 py-2 pr-4 text-foreground/80">
-                      {inline(c, k)}
-                    </td>
+              <thead>
+                <tr>
+                  {rows[0].map((c, j) => (
+                    <th key={j} className="border-b border-border pb-2 pr-4 font-normal text-muted-foreground">
+                      {inline(c, j)}
+                    </th>
                   ))}
                 </tr>
-              ))}
-            </tbody>
+              </thead>
+              <tbody>
+                {rows.slice(1).map((r, j) => (
+                  <tr key={j}>
+                    {r.map((c, k) => (
+                      <td key={k} className="border-b border-border/60 py-2 pr-4 text-foreground/80">
+                        {inline(c, k)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
             </table>
           </div>
         )
@@ -390,11 +423,19 @@ function parseDoc(source: string, headingIds: string[]): ReactNode[] {
   return nodes
 }
 
+interface TocItem {
+  id: string
+  text: string
+  level: number
+  isPart: boolean
+}
+
 export function DocsPage() {
   const headingIds = useMemo(() => computeHeadingIds(docSource), [])
   const content = useMemo(() => parseDoc(docSource, headingIds), [headingIds])
+
   const toc = useMemo(() => {
-    const items: { id: string; text: string; level: number }[] = []
+    const items: TocItem[] = []
     const lines = docSource.split("\n")
     lines.forEach((line, i) => {
       const m = line.match(/^(#{1,3}) (.+)$/)
@@ -402,44 +443,323 @@ export function DocsPage() {
       const level = m[1].length
       const text = m[2].replace(/\*\*/g, "").trim()
       if (text === "Índice" || text.startsWith("Manual de")) return
-      items.push({ id: headingIds[i], text, level })
+      const isPart = text.startsWith("PARTE ") || level === 1
+      items.push({ id: headingIds[i], text, level, isPart })
     })
     return items
   }, [headingIds])
-  const active = useScrollSpy(toc.map((t) => t.id))
+
+  const { activeId, progress } = useScrollSpy(toc.map((t) => t.id))
+
+  const [search, setSearch] = useState("")
+  const [filterPartsOnly, setFilterPartsOnly] = useState(false)
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false)
+
+  const navRef = useRef<HTMLElement | null>(null)
+
+  useEffect(() => {
+    if (!activeId || !navRef.current) return
+    const container = navRef.current
+    const activeEl = container.querySelector<HTMLElement>(`[data-toc-id="${CSS.escape(activeId)}"]`)
+    if (activeEl) {
+      const elTop = activeEl.offsetTop
+      const elHeight = activeEl.offsetHeight
+      const containerTop = container.scrollTop
+      const containerHeight = container.clientHeight
+
+      if (elTop < containerTop) {
+        container.scrollTo({ top: Math.max(0, elTop - 12), behavior: "smooth" })
+      } else if (elTop + elHeight > containerTop + containerHeight) {
+        container.scrollTo({ top: elTop + elHeight - containerHeight + 12, behavior: "smooth" })
+      }
+    }
+  }, [activeId])
+
+  const filteredToc = useMemo(() => {
+    return toc.filter((item) => {
+      if (filterPartsOnly && !item.isPart) return false
+      if (search.trim()) {
+        return item.text.toLowerCase().includes(search.toLowerCase())
+      }
+      return true
+    })
+  }, [toc, filterPartsOnly, search])
+
+  const partsCount = useMemo(() => toc.filter((t) => t.isPart).length, [toc])
+
+  const handleNavigate = (id: string) => {
+    const el = document.getElementById(id)
+    if (el) {
+      const yOffset = -80
+      const y = el.getBoundingClientRect().top + window.pageYOffset + yOffset
+      window.scrollTo({ top: y, behavior: "smooth" })
+    }
+    setMobileDrawerOpen(false)
+  }
+
+  const handleScrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" })
+    setMobileDrawerOpen(false)
+  }
 
   return (
-    <article className="mx-auto w-full">
-      {content}
-      <aside className="fixed top-1/2 right-5 z-40 hidden max-h-[70vh] w-56 -translate-y-1/2 flex-col gap-3 overflow-y-auto rounded-2xl border border-border bg-card/80 p-3 backdrop-blur 2xl:flex">
-        <p className="px-2 text-[11px] font-medium text-muted-foreground">En esta página</p>
-        <nav className="flex flex-col gap-0.5">
-          {toc.map((t) => (
-            <a
-              key={t.id}
-              href={`#${t.id}`}
-              className={`truncate rounded-md px-2 py-1 text-[12.5px] transition-colors duration-150 ${
-                active === t.id
-                  ? "bg-muted text-foreground"
-                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-              }`}
-              style={{ paddingLeft: `${8 + (t.level - 1) * 12}px` }}
+    <div className="relative flex w-full items-start gap-10">
+      {/* Main Document Area */}
+      <article className="min-w-0 flex-1">
+        {/* Top Collapsible Index for Mobile/Tablet (lg:hidden) */}
+        <details className="group mb-8 rounded-2xl border border-border bg-card/60 p-4 transition-all lg:hidden">
+          <summary className="flex cursor-pointer items-center justify-between font-medium text-sm text-foreground select-none">
+            <span className="flex items-center gap-2">
+              <RiListUnordered className="size-4 text-primary" />
+              Índice del Manual ({partsCount} Partes)
+            </span>
+            <RiArrowDownSLine className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
+          </summary>
+          <div className="mt-3 pt-3 border-t border-border/50 max-h-72 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
+            {toc.map((t) => (
+              <a
+                key={t.id}
+                href={`#${t.id}`}
+                onClick={(e) => {
+                  e.preventDefault()
+                  handleNavigate(t.id)
+                }}
+                className={cn(
+                  "block truncate rounded-md px-2 py-1.5 text-xs transition-colors",
+                  t.isPart
+                    ? "font-semibold text-foreground mt-1 bg-muted/30"
+                    : "text-muted-foreground hover:text-foreground pl-4"
+                )}
+              >
+                {t.text}
+              </a>
+            ))}
+          </div>
+        </details>
+
+        {content}
+
+        <div className="mt-14 flex items-center justify-end text-[13px]">
+          <Link
+            to="/aprender/fundamentos"
+            className="flex items-center gap-1.5 text-muted-foreground transition-colors duration-150 hover:text-foreground"
+          >
+            Empezar lecciones
+            <RiArrowRightLine className="size-4" />
+          </Link>
+        </div>
+      </article>
+
+      {/* Desktop Right Sidebar (Notion / Stripe / Vercel style) */}
+      <aside className="sticky top-24 shrink-0 hidden lg:block w-64 self-start py-1">
+        {/* Progress Header */}
+        <div className="flex items-center justify-between mb-3 text-[11px] font-medium tracking-wider uppercase text-muted-foreground">
+          <span>En esta página</span>
+          <span className="font-mono text-primary font-semibold">{progress}%</span>
+        </div>
+
+        {/* Reading progress line */}
+        <div className="h-1 w-full overflow-hidden rounded-full bg-muted/60 mb-4">
+          <div
+            className="h-full bg-primary transition-all duration-200 ease-out"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+
+        {/* Search / Filter bar */}
+        <div className="relative mb-3">
+          <RiSearchLine className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Filtrar secciones..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full rounded-lg border border-border/60 bg-muted/30 pl-8 pr-7 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary/40 focus:bg-background focus:outline-none transition-colors"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
             >
-              {t.text}
-            </a>
-          ))}
-        </nav>
+              <RiCloseLine className="size-3.5" />
+            </button>
+          )}
+        </div>
+
+        {/* Quick Filter toggle */}
+        <div className="flex items-center justify-between mb-3 text-[11px]">
+          <button
+            onClick={() => setFilterPartsOnly(!filterPartsOnly)}
+            className={cn(
+              "px-2 py-0.5 rounded-full transition-colors font-medium cursor-pointer",
+              filterPartsOnly
+                ? "bg-primary/10 text-primary"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+            )}
+          >
+            {filterPartsOnly ? "Solo Partes" : `Todas (${toc.length})`}
+          </button>
+          <button
+            onClick={handleScrollToTop}
+            className="flex items-center gap-0.5 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+          >
+            <RiArrowUpSLine className="size-3.5" />
+            Top
+          </button>
+        </div>
+
+        {/* Heading Tree with Pill Guide Rail Track */}
+        <div className="relative pl-3.5">
+          {/* Rounded vertical pill track line on the left */}
+          <div className="absolute left-0 top-1 bottom-1 w-[2px] rounded-full bg-border/40" />
+
+          <nav ref={navRef} className="max-h-[calc(100vh-14rem)] overflow-y-auto pr-1 space-y-1 text-[12.5px] leading-snug custom-scrollbar">
+            {filteredToc.length === 0 ? (
+              <p className="py-4 text-center text-xs text-muted-foreground">Sin resultados</p>
+            ) : (
+              filteredToc.map((t) => {
+                const isActive = activeId === t.id
+                return (
+                  <a
+                    key={t.id}
+                    data-toc-id={t.id}
+                    href={`#${t.id}`}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      handleNavigate(t.id)
+                    }}
+                    className={cn(
+                      "group relative flex items-center rounded-lg px-2.5 py-1 transition-all duration-200 select-none",
+                      t.isPart
+                        ? "font-semibold text-foreground text-[12.5px] mt-2 first:mt-0"
+                        : t.level === 2
+                          ? "pl-3 text-[12px]"
+                          : "pl-5 text-[11.5px]",
+                      isActive
+                        ? "bg-primary/10 text-primary font-medium shadow-2xs before:absolute before:-left-[15.5px] before:top-1/2 before:-translate-y-1/2 before:w-[3px] before:h-4.5 before:rounded-full before:bg-primary before:shadow-xs"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                    )}
+                  >
+                    <span className="truncate">{t.text}</span>
+                  </a>
+                )
+              })
+            )}
+          </nav>
+        </div>
       </aside>
-      <div className="mt-14 flex items-center justify-end text-[13px]">
-        <Link
-          to="/aprender/fundamentos"
-          className="flex items-center gap-1.5 text-muted-foreground transition-colors duration-150 hover:text-foreground"
+
+      {/* Floating Bottom Button for Mobile / Tablet */}
+      <div className="fixed bottom-6 right-6 z-40 lg:hidden">
+        <button
+          onClick={() => setMobileDrawerOpen(true)}
+          className="flex items-center gap-2 rounded-full border border-border bg-card/95 px-4 py-2.5 text-xs font-medium text-foreground shadow-lg backdrop-blur-md transition-all hover:bg-card active:scale-95 cursor-pointer"
         >
-          Empezar lecciones
-          <RiArrowRightLine className="size-4" />
-        </Link>
+          <RiListUnordered className="size-4 text-primary" />
+          <span>Índice</span>
+          <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-semibold text-primary">
+            {progress}%
+          </span>
+        </button>
       </div>
-    </article>
+
+      {/* Bottom Sheet Drawer for Mobile */}
+      {mobileDrawerOpen && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
+          <div
+            className="fixed inset-0"
+            onClick={() => setMobileDrawerOpen(false)}
+          />
+          <div className="relative z-10 flex h-auto max-h-[82vh] w-full flex-col rounded-t-3xl border-t border-border bg-card p-5 shadow-2xl animate-in slide-in-from-bottom duration-250">
+            {/* Drag Handle & Header */}
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-muted-foreground/30" />
+            <div className="flex items-center justify-between pb-3 border-b border-border">
+              <div className="flex items-center gap-2">
+                <RiListUnordered className="size-4 text-primary" />
+                <span className="font-semibold text-foreground text-sm">
+                  Índice de Secciones
+                </span>
+              </div>
+              <button
+                onClick={() => setMobileDrawerOpen(false)}
+                className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer"
+              >
+                <RiCloseLine className="size-5" />
+              </button>
+            </div>
+
+            {/* Reading progress bar */}
+            <div className="mt-3 mb-1 flex items-center justify-between text-xs text-muted-foreground">
+              <span>Progreso</span>
+              <span className="font-mono text-primary font-semibold">{progress}%</span>
+            </div>
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted mb-3">
+              <div
+                className="h-full bg-primary transition-all duration-200"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+
+            {/* Search Input */}
+            <div className="relative mb-3">
+              <RiSearchLine className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Buscar sección..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full rounded-xl border border-border bg-muted/40 pl-9 pr-8 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground cursor-pointer"
+                >
+                  <RiCloseLine className="size-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Sections List */}
+            <nav className="flex-1 overflow-y-auto pr-1 space-y-1 custom-scrollbar">
+              {filteredToc.map((t) => {
+                const isActive = activeId === t.id
+                return (
+                  <a
+                    key={t.id}
+                    href={`#${t.id}`}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      handleNavigate(t.id)
+                    }}
+                    className={cn(
+                      "block truncate rounded-lg px-3 py-2 text-xs transition-colors",
+                      t.isPart
+                        ? "font-semibold text-foreground bg-muted/40 mt-1"
+                        : "text-muted-foreground hover:text-foreground pl-6",
+                      isActive && "bg-primary/10 text-primary font-medium"
+                    )}
+                  >
+                    {t.text}
+                  </a>
+                )
+              })}
+            </nav>
+
+            <div className="mt-3 pt-3 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
+              <span>{toc.length} secciones</span>
+              <button
+                onClick={handleScrollToTop}
+                className="flex items-center gap-1 text-primary font-medium cursor-pointer"
+              >
+                <RiArrowUpSLine className="size-4" />
+                Ir arriba
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 
