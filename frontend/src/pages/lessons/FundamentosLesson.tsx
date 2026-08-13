@@ -13,7 +13,7 @@ function estimarTokens(texto: string): number {
 export function FundamentosLesson() {
   return (
     <LessonShell
-      title="LLM y tokens (#1, #2)"
+      title="LLM y tokens"
       tag="doc.md #1-2 · fundamentos"
       intro={
         <>

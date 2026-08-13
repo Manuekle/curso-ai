@@ -77,7 +77,7 @@ export function EvaluacionLesson() {
 
   return (
     <LessonShell
-      title="Evaluación de agentes y retrieval (#61-63)"
+      title="Evaluación de agentes y retrieval"
       tag="doc.md #61-63 · “Métricas de retrieval (RAG)” · server/app.ts"
       intro={
         <>

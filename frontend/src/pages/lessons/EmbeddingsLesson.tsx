@@ -62,7 +62,7 @@ export function EmbeddingsLesson() {
 
   return (
     <LessonShell
-      title="Embeddings: texto → números (#24)"
+      title="Embeddings: texto → números"
       tag="doc.md #24 · server/rag.ts"
       intro={
         <>

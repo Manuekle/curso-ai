@@ -9,40 +9,40 @@
 ## Índice
 
 - [0. Cómo usar este documento](#0-cómo-usar-este-documento)
-- [PARTE I — Fundamentos de inteligencia artificial](#parte-i-fundamentos-de-inteligencia-artificial)
-- [PARTE II — Workflows, automatización y agentes](#parte-ii-workflows-automatización-y-agentes)
-- [PARTE III — Multiagentes](#parte-iii-multiagentes)
-- [PARTE IV — RAG](#parte-iv-rag)
-- [PARTE V — Seguridad](#parte-v-seguridad)
-- [PARTE VI — APIs e integraciones](#parte-vi-apis-e-integraciones)
-- [PARTE VII — Arquitectura empresarial](#parte-vii-arquitectura-empresarial)
-- [PARTE VIII — Producción](#parte-viii-producción)
-- [PARTE IX — Costos de IA](#parte-ix-costos-de-ia)
-- [PARTE X — Elección de modelos](#parte-x-elección-de-modelos)
-- [PARTE XI — Evaluación de agentes](#parte-xi-evaluación-de-agentes)
-- [PARTE XII — Manejo de alucinaciones](#parte-xii-manejo-de-alucinaciones)
-- [PARTE XIII — Google Workspace](#parte-xiii-google-workspace)
-- [PARTE XIV — Tu proyecto Forge](#parte-xiv-tu-proyecto-forge)
-- [PARTE XV — JavaScript / TypeScript](#parte-xv-javascript-typescript)
-- [PARTE XVI — Casos de arquitectura](#parte-xvi-casos-de-arquitectura)
-- [PARTE XVII — Preguntas típicas de entrevista](#parte-xvii-preguntas-típicas-de-entrevista)
-- [PARTE XVIII — Preguntas de comportamiento técnico](#parte-xviii-preguntas-de-comportamiento-técnico)
-- [PARTE XIX — Ejercicios de práctica](#parte-xix-ejercicios-de-práctica)
-- [PARTE XX — Soluciones de los ejercicios](#parte-xx-soluciones-de-los-ejercicios)
-- [PARTE XXI — Preguntas de nivel más alto](#parte-xxi-preguntas-de-nivel-más-alto)
-- [PARTE XXII — Preguntas de “pizarra”](#parte-xxii-preguntas-de-pizarra)
-- [PARTE XXIII — Respuestas cortas para memorizar](#parte-xxiii-respuestas-cortas-para-memorizar)
-- [PARTE XXIV — Checklist de estudio](#parte-xxiv-checklist-de-estudio)
-- [PARTE XXV — Regla para resolver cualquier caso](#parte-xxv-regla-para-resolver-cualquier-caso)
-- [PARTE XXVI — Respuesta modelo para un caso complejo](#parte-xxvi-respuesta-modelo-para-un-caso-complejo)
-- [PARTE XXVII — Tu “mapa mental” final](#parte-xxvii-tu-mapa-mental-final)
-- [PARTE XXVIII — Las 15 ideas que debes recordar](#parte-xxviii-las-15-ideas-que-debes-recordar)
+- [PARTE 1 — Fundamentos de inteligencia artificial](#parte-1-fundamentos-de-inteligencia-artificial)
+- [PARTE 2 — Workflows, automatización y agentes](#parte-2-workflows-automatización-y-agentes)
+- [PARTE 3 — Multiagentes](#parte-3-multiagentes)
+- [PARTE 4 — RAG](#parte-4-rag)
+- [PARTE 5 — Seguridad](#parte-5-seguridad)
+- [PARTE 6 — APIs e integraciones](#parte-6-apis-e-integraciones)
+- [PARTE 7 — Arquitectura empresarial](#parte-7-arquitectura-empresarial)
+- [PARTE 8 — Producción](#parte-8-producción)
+- [PARTE 9 — Costos de IA](#parte-9-costos-de-ia)
+- [PARTE 10 — Elección de modelos](#parte-10-elección-de-modelos)
+- [PARTE 11 — Evaluación de agentes](#parte-11-evaluación-de-agentes)
+- [PARTE 12 — Manejo de alucinaciones](#parte-12-manejo-de-alucinaciones)
+- [PARTE 13 — Google Workspace](#parte-13-google-workspace)
+- [PARTE 14 — Tu proyecto Forge](#parte-14-tu-proyecto-forge)
+- [PARTE 15 — JavaScript / TypeScript](#parte-15-javascript-typescript)
+- [PARTE 16 — Casos de arquitectura](#parte-16-casos-de-arquitectura)
+- [PARTE 17 — Preguntas típicas de entrevista](#parte-17-preguntas-típicas-de-entrevista)
+- [PARTE 18 — Preguntas de comportamiento técnico](#parte-18-preguntas-de-comportamiento-técnico)
+- [PARTE 19 — Ejercicios de práctica](#parte-19-ejercicios-de-práctica)
+- [PARTE 20 — Soluciones de los ejercicios](#parte-20-soluciones-de-los-ejercicios)
+- [PARTE 21 — Preguntas de nivel más alto](#parte-21-preguntas-de-nivel-más-alto)
+- [PARTE 22 — Preguntas de “pizarra”](#parte-22-preguntas-de-pizarra)
+- [PARTE 23 — Respuestas cortas para memorizar](#parte-23-respuestas-cortas-para-memorizar)
+- [PARTE 24 — Checklist de estudio](#parte-24-checklist-de-estudio)
+- [PARTE 25 — Regla para resolver cualquier caso](#parte-25-regla-para-resolver-cualquier-caso)
+- [PARTE 26 — Respuesta modelo para un caso complejo](#parte-26-respuesta-modelo-para-un-caso-complejo)
+- [PARTE 27 — Tu “mapa mental” final](#parte-27-tu-mapa-mental-final)
+- [PARTE 28 — Las 15 ideas que debes recordar](#parte-28-las-15-ideas-que-debes-recordar)
 - [Frase final para la entrevista](#frase-final-para-la-entrevista)
 - [Fin del material](#fin-del-material)
 
 ---
 
-# 0. Cómo usar este documento
+# Cómo usar este documento
 
 No estudies únicamente memorizando respuestas.
 
@@ -72,9 +72,9 @@ flowchart TD
 
 ---
 
-# PARTE I — FUNDAMENTOS DE INTELIGENCIA ARTIFICIAL
+# PARTE 1 — FUNDAMENTOS DE INTELIGENCIA ARTIFICIAL
 
-# 1. ¿Qué es un LLM?
+# ¿Qué es un LLM?
 
 Un **Large Language Model (LLM)** es un modelo entrenado con grandes cantidades de datos para procesar y generar lenguaje.
 
@@ -125,7 +125,7 @@ Es mejor pensar:
 
 ---
 
-# 2. ¿Qué son los tokens?
+# ¿Qué son los tokens?
 
 Los modelos procesan texto mediante **tokens**.
 
@@ -175,7 +175,7 @@ Si haces eso para miles de usuarios, el costo puede crecer rápidamente.
 
 ---
 
-# 3. Context Window
+# Context Window
 
 El **context window** es la cantidad máxima de información que un modelo puede procesar dentro de una interacción.
 
@@ -197,7 +197,7 @@ La optimización consiste en proporcionar el **contexto necesario**, no el máxi
 
 ---
 
-# 4. Prompt Engineering
+# Prompt Engineering
 
 Es el diseño de instrucciones y contexto que recibe el modelo.
 
@@ -289,7 +289,7 @@ Frase para recordar:
 
 ---
 
-# 5. Temperature
+# Temperature
 
 La temperatura controla, de forma simplificada, cuánto puede variar la generación.
 
@@ -317,7 +317,7 @@ Importante:
 
 ---
 
-# 6. Structured Output
+# Structured Output
 
 Cuando una aplicación necesita utilizar la respuesta de un LLM automáticamente, es mejor solicitar una estructura definida.
 
@@ -372,9 +372,9 @@ Puntos de entrevista:
 * “¿El modelo sabe si su información está desactualizada?” → No. No sabe qué sabe ni cuándo lo aprendió.
 * Modelos pequeños (slms) existen: corren localmente, más baratos, menos capaces — trade-off de siempre.
 
-# PARTE II — WORKFLOWS, AUTOMATIZACIÓN Y AGENTES
+# PARTE 2 — WORKFLOWS, AUTOMATIZACIÓN Y AGENTES
 
-# 7. ¿Qué es un workflow?
+# ¿Qué es un workflow?
 
 Un workflow es una secuencia de tareas definida.
 
@@ -396,7 +396,7 @@ Es normalmente:
 
 ---
 
-# 8. ¿Qué es un agente?
+# ¿Qué es un agente?
 
 Un agente es un sistema que recibe un objetivo y puede:
 
@@ -420,7 +420,7 @@ flowchart TD
 
 ---
 
-# 9. Workflow vs Agente
+# Workflow vs Agente
 
 | Característica  | Workflow               | Agente              |
 | --------------- | ---------------------- | ------------------- |
@@ -433,7 +433,7 @@ flowchart TD
 
 ---
 
-# 10. ¿Cuándo NO utilizar IA?
+# ¿Cuándo NO utilizar IA?
 
 Si un proceso puede resolverse perfectamente mediante:
 
@@ -458,7 +458,7 @@ No necesitas un LLM para eso.
 
 ---
 
-# 11. ¿Cuándo sí utilizar IA?
+# ¿Cuándo sí utilizar IA?
 
 IA puede aportar valor cuando existe:
 
@@ -473,13 +473,13 @@ IA puede aportar valor cuando existe:
 
 ---
 
-# 12. Regla importante
+# Regla importante
 
 > **No todo problema necesita IA y no todo problema que necesita IA necesita un agente.**
 
 ---
 
-# 13. Tool Calling / Function Calling
+# Tool Calling / Function Calling
 
 Un agente no debería ejecutar directamente cualquier operación.
 
@@ -506,7 +506,7 @@ flowchart TD
 
 ---
 
-# 14. ¿Por qué usar Tools?
+# ¿Por qué usar Tools?
 
 Porque permiten limitar qué acciones puede realizar el agente.
 
@@ -551,9 +551,9 @@ flowchart TD
     A -->|decide| E[Siguiente paso / otra tool / responder]
 ```
 
-# PARTE III — MULTIAGENTES
+# PARTE 3 — MULTIAGENTES
 
-# 15. ¿Qué es un sistema multiagente?
+# ¿Qué es un sistema multiagente?
 
 Es una arquitectura donde diferentes agentes especializados colaboran para resolver un problema.
 
@@ -569,7 +569,7 @@ flowchart TD
 
 ---
 
-# 16. ¿Por qué utilizar varios agentes?
+# ¿Por qué utilizar varios agentes?
 
 Porque un problema puede dividirse en responsabilidades.
 
@@ -591,7 +591,7 @@ flowchart TD
 
 ---
 
-# 17. Problema de multiagentes
+# Problema de multiagentes
 
 Más agentes no significa automáticamente mejor.
 
@@ -609,7 +609,7 @@ Por eso debes poder responder:
 
 ---
 
-# 18. Orquestador
+# Orquestador
 
 El orquestador es el componente que coordina el workflow.
 
@@ -638,7 +638,7 @@ flowchart TD
 
 ---
 
-# 19. ¿Cómo evitar loops infinitos?
+# ¿Cómo evitar loops infinitos?
 
 Nunca confíes únicamente en el agente.
 
@@ -676,7 +676,7 @@ flowchart TD
 
 ---
 
-# 20. ¿Cómo manejar contradicciones?
+# ¿Cómo manejar contradicciones?
 
 Puedes hacer que el orquestador:
 
@@ -770,9 +770,9 @@ HITL no es “que un humano apruebe todo” — es diseño explícito de cuándo
 
 Las decisiones humanas también se registran: quién aprobó, cuándo, sobre qué evidencia. Sin audit trail, el gate no aporta trazabilidad.
 
-# PARTE IV — RAG
+# PARTE 4 — RAG
 
-# 21. ¿Qué significa RAG?
+# ¿Qué significa RAG?
 
 **Retrieval-Augmented Generation**
 
@@ -780,7 +780,7 @@ Es una arquitectura donde el sistema recupera información relevante antes de ge
 
 ---
 
-# 22. Flujo RAG
+# Flujo RAG
 
 ```mermaid
 flowchart TD
@@ -805,7 +805,7 @@ flowchart TD
 
 ---
 
-# 23. ¿Qué es un chunk?
+# ¿Qué es un chunk?
 
 Un chunk es una fragmentación de un documento.
 
@@ -837,7 +837,7 @@ Regla práctica: **diseña el chunk según el tipo de pregunta** que debe respon
 
 ---
 
-# 24. ¿Qué son embeddings?
+# ¿Qué son embeddings?
 
 Un embedding representa información como vectores numéricos.
 
@@ -868,7 +868,7 @@ Elección de distancia depende del modelo de embeddings y de la base vectorial: 
 
 ---
 
-# 25. Vector Database
+# Vector Database
 
 Una base de datos vectorial permite almacenar y recuperar embeddings.
 
@@ -924,7 +924,7 @@ El RAG clásico recupera una vez y responde. Agentic RAG deja que el agente deci
 
 Cuándo usarlo: preguntas compuestas que cruzan fuentes. Cuándo no: consultas simples sobre una fuente — el RAG clásico es más barato y predecible.
 
-# 26. ¿Por qué RAG y no todo en el prompt?
+# ¿Por qué RAG y no todo en el prompt?
 
 Porque enviar todo:
 
@@ -950,7 +950,7 @@ LLM
 
 ---
 
-# 27. RAG NO garantiza cero alucinaciones
+# RAG NO garantiza cero alucinaciones
 
 Una respuesta correcta:
 
@@ -962,7 +962,7 @@ Nunca digas:
 
 ---
 
-# 28. RAG y seguridad
+# RAG y seguridad
 
 Este concepto es muy importante.
 
@@ -998,9 +998,9 @@ LLM
 
 ---
 
-# PARTE V — SEGURIDAD
+# PARTE 5 — SEGURIDAD
 
-# 29. Authentication vs Authorization
+# Authentication vs Authorization
 
 ## Authentication
 
@@ -1032,7 +1032,7 @@ Employee → solo puede consultar
 
 ---
 
-# 30. OAuth
+# OAuth
 
 OAuth es un protocolo/framework para delegación de autorización.
 
@@ -1060,7 +1060,7 @@ flowchart TD
 
 ---
 
-# 31. JWT
+# JWT
 
 JWT es un formato de token.
 
@@ -1090,7 +1090,7 @@ Puntos de entrevista:
 
 ---
 
-# 32. RBAC
+# RBAC
 
 Role-Based Access Control.
 
@@ -1109,7 +1109,7 @@ Employee
 
 ---
 
-# 33. Principle of Least Privilege
+# Principle of Least Privilege
 
 Cada componente debe tener solamente los permisos que necesita.
 
@@ -1135,7 +1135,7 @@ Solo lectura
 
 ---
 
-# 34. Información sensible
+# Información sensible
 
 Si el sistema procesa:
 
@@ -1166,7 +1166,7 @@ debes evaluar:
 
 ---
 
-# 35. ¿Cómo protegerías datos antes del LLM?
+# ¿Cómo protegerías datos antes del LLM?
 
 No solamente con prompting.
 
@@ -1219,9 +1219,9 @@ Puntos para entrevista:
 * **Guardrails:** capa programática (reglas, validadores, filtros de contenido) entre el modelo y el mundo, no confiar solo en el prompt.
 * Acciones críticas (escribir, borrar, transferir) requieren confirmación humana y validación de reglas — ya cubierto en casos anteriores.
 
-# PARTE VI — APIs E INTEGRACIONES
+# PARTE 6 — APIs E INTEGRACIONES
 
-# 36. REST
+# REST
 
 REST es un estilo de arquitectura común para APIs HTTP.
 
@@ -1237,7 +1237,7 @@ DELETE /products/123
 
 ---
 
-# 37. Métodos HTTP
+# Métodos HTTP
 
 ```text
 GET     → consultar
@@ -1249,7 +1249,7 @@ DELETE  → eliminar
 
 ---
 
-# 38. Status Codes
+# Status Codes
 
 ```text
 200 → OK
@@ -1270,7 +1270,7 @@ DELETE  → eliminar
 
 ---
 
-# 39. Webhooks
+# Webhooks
 
 Un webhook permite que un sistema envíe una notificación HTTP cuando ocurre un evento.
 
@@ -1296,7 +1296,7 @@ Procesar evento
 
 ---
 
-# 40. Retry
+# Retry
 
 No todos los errores deben reintentarse.
 
@@ -1330,7 +1330,7 @@ normalmente requieren corregir la solicitud/autorización.
 
 ---
 
-# 41. Idempotencia
+# Idempotencia
 
 Una operación idempotente puede repetirse sin producir efectos adicionales no deseados, dependiendo del diseño.
 
@@ -1354,7 +1354,7 @@ Si el cliente reintenta, el backend puede reconocer la misma operación.
 
 ---
 
-# 42. Rate Limiting
+# Rate Limiting
 
 Limita la cantidad de solicitudes permitidas.
 
@@ -1379,9 +1379,9 @@ Protege contra:
 
 ---
 
-# PARTE VII — ARQUITECTURA EMPRESARIAL
+# PARTE 7 — ARQUITECTURA EMPRESARIAL
 
-# 43. Arquitectura general
+# Arquitectura general
 
 ```mermaid
 flowchart TD
@@ -1402,7 +1402,7 @@ flowchart TD
 
 ---
 
-# 44. Agente + ERP
+# Agente + ERP
 
 ```text
 Usuario
@@ -1432,7 +1432,7 @@ Base de datos
 
 ---
 
-# 45. Agente + Google Workspace
+# Agente + Google Workspace
 
 ```text
 Usuario
@@ -1452,7 +1452,7 @@ La integración puede utilizar mecanismos de autenticación y autorización adec
 
 ---
 
-# 46. MCP
+# MCP
 
 **Model Context Protocol (MCP)** es un protocolo que permite estandarizar cómo los modelos/agentes interactúan con herramientas y fuentes de contexto.
 
@@ -1472,9 +1472,9 @@ Importante:
 
 ---
 
-# PARTE VIII — PRODUCCIÓN
+# PARTE 8 — PRODUCCIÓN
 
-# 47. De prototipo a producción
+# De prototipo a producción
 
 Un prototipo demuestra:
 
@@ -1494,7 +1494,7 @@ Mantenibilidad
 
 ---
 
-# 48. Observabilidad
+# Observabilidad
 
 Debes poder responder:
 
@@ -1527,7 +1527,7 @@ Puedes medir:
 
 ---
 
-# 49. Logs
+# Logs
 
 Ejemplo conceptual:
 
@@ -1546,7 +1546,7 @@ No debes registrar indiscriminadamente secretos o información sensible.
 
 ---
 
-# 50. Tracing
+# Tracing
 
 Permite seguir una solicitud a través de múltiples componentes.
 
@@ -1564,7 +1564,7 @@ Especialmente útil en multiagentes.
 
 ---
 
-# 51. Caching
+# Caching
 
 Caching permite reutilizar resultados cuando sea apropiado.
 
@@ -1594,7 +1594,7 @@ Pero debes considerar:
 
 ---
 
-# 52. Queue
+# Queue
 
 Las colas permiten desacoplar procesos.
 
@@ -1621,7 +1621,7 @@ Es útil cuando el trabajo es:
 
 ---
 
-# 53. Rate limiting + Queue
+# Rate limiting + Queue
 
 Una combinación útil:
 
@@ -1643,7 +1643,7 @@ LLM
 
 ---
 
-# 54. Escalabilidad
+# Escalabilidad
 
 Para decenas de miles de usuarios debes pensar en:
 
@@ -1675,9 +1675,9 @@ No basta con:
   * timeouts — reintentar con política adecuada o degradar.
 * **Reducir latencia:** prompt caching, batching de requests, modelos más rápidos para pasos simples, paralelizar llamadas independientes (`Promise.all`), evitar re-envíos de contexto innecesarios.
 
-# PARTE IX — COSTOS DE IA
+# PARTE 9 — COSTOS DE IA
 
-# 55. ¿De dónde sale el costo?
+# ¿De dónde sale el costo?
 
 Conceptualmente:
 
@@ -1696,7 +1696,7 @@ Herramientas externas
 
 ---
 
-# 56. Optimización
+# Optimización
 
 Primero mide.
 
@@ -1716,7 +1716,7 @@ Después:
 
 ---
 
-# 57. Model Routing
+# Model Routing
 
 No todas las tareas necesitan el mismo modelo.
 
@@ -1738,7 +1738,7 @@ Modelo más capaz
 
 ---
 
-# 58. Open Source vs API
+# Open Source vs API
 
 ## API
 
@@ -1772,9 +1772,9 @@ Desventajas:
 
 ---
 
-# PARTE X — ELECCIÓN DE MODELOS
+# PARTE 10 — ELECCIÓN DE MODELOS
 
-# 59. ¿OpenAI, Anthropic, Gemini u Open Source?
+# ¿OpenAI, Anthropic, Gemini u Open Source?
 
 No respondas:
 
@@ -1801,7 +1801,7 @@ Infraestructura
 
 ---
 
-# 60. Benchmark
+# Benchmark
 
 Puedes crear un conjunto de casos reales:
 
@@ -1863,9 +1863,9 @@ El benchmark propio mide TU caso; los públicos miden capacidades generales:
 * Mitigación: evaluación con casos adversarios y diversos en el dataset, filtros de contenido en salida, revisión humana en decisiones sensibles (contratación, crédito, salud).
 * Punto de entrevista: “¿cómo garantizás que el sistema no discrimina?” → no se garantiza; se mide con datasets balanceados y se mitiga en capas, como cualquier otro riesgo.
 
-# PARTE XI — EVALUACIÓN DE AGENTES
+# PARTE 11 — EVALUACIÓN DE AGENTES
 
-# 61. ¿Cómo sabes si un agente funciona?
+# ¿Cómo sabes si un agente funciona?
 
 No basta con:
 
@@ -1903,7 +1903,7 @@ Debes evaluar:
 
 ---
 
-# 62. Golden Dataset
+# Golden Dataset
 
 Puedes crear casos con respuestas esperadas.
 
@@ -1929,7 +1929,7 @@ Esto permite probar cambios de:
 
 ---
 
-# 63. Regression Testing
+# Regression Testing
 
 Cambias un prompt.
 
@@ -1965,7 +1965,7 @@ Se miden con un dataset etiquetado de preguntas → documentos relevantes. El re
 * **Frameworks conocidos:** Ragas, DeepEval, LangSmith, OpenAI Evals. Saber nombrar uno y explicar qué mide.
 * **CI/CD de prompts:** los cambios de prompt, modelo o RAG corren la evaluación en CI antes de producción (regresión automática, no manual).
 
-# 64. ¿Por qué ocurren?
+# ¿Por qué ocurren?
 
 Pueden ocurrir por:
 
@@ -1979,7 +1979,7 @@ Pueden ocurrir por:
 
 ---
 
-# 65. Mitigación
+# Mitigación
 
 No existe una única solución.
 
@@ -2003,7 +2003,7 @@ Evaluation
 
 ---
 
-# 66. Regla crítica
+# Regla crítica
 
 Si no existe evidencia:
 
@@ -2016,9 +2016,9 @@ Es mejor eso que inventar.
 
 ---
 
-# PARTE XIII — GOOGLE WORKSPACE
+# PARTE 13 — GOOGLE WORKSPACE
 
-# 67. Arquitectura
+# Arquitectura
 
 ```text
 Usuario
@@ -2037,7 +2037,7 @@ Google APIs
 
 ---
 
-# 68. Gemini + Google Workspace
+# Gemini + Google Workspace
 
 No confundas:
 
@@ -2067,9 +2067,9 @@ La decisión depende de los requisitos de la solución.
 
 ---
 
-# PARTE XIV — TU PROYECTO FORGE
+# PARTE 14 — TU PROYECTO FORGE
 
-# 69. Cómo presentar Forge
+# Cómo presentar Forge
 
 Usa esta estructura:
 
@@ -2137,7 +2137,7 @@ Node.js es normalmente utilizado en backend/runtime, no como frontend.
 
 ---
 
-# 70. Preguntas sobre Forge
+# Preguntas sobre Forge
 
 ### ¿Por qué multiagente?
 
@@ -2161,9 +2161,9 @@ Node.js es normalmente utilizado en backend/runtime, no como frontend.
 
 ---
 
-# PARTE XV — JAVASCRIPT / TYPESCRIPT
+# PARTE 15 — JAVASCRIPT / TYPESCRIPT
 
-# 71. Consumir una API
+# Consumir una API
 
 ```typescript
 async function getInventory() {
@@ -2179,7 +2179,7 @@ async function getInventory() {
 
 ---
 
-# 72. Manejo de errores
+# Manejo de errores
 
 ```typescript
 try {
@@ -2193,7 +2193,7 @@ try {
 
 ---
 
-# 73. Transformación de datos
+# Transformación de datos
 
 ```typescript
 const products = [
@@ -2219,7 +2219,7 @@ Resultado:
 
 ---
 
-# 74. Async/Await
+# Async/Await
 
 Concepto:
 
@@ -2243,7 +2243,7 @@ Debes entender:
 
 ---
 
-# 75. Promise.all
+# Promise.all
 
 Cuando las operaciones son independientes:
 
@@ -2265,7 +2265,7 @@ Pero debes tener cuidado con:
 
 ---
 
-# PARTE XVI — CASOS DE ARQUITECTURA
+# PARTE 16 — CASOS DE ARQUITECTURA
 
 # CASO 1 — INVENTARIO
 
@@ -2438,7 +2438,7 @@ Agent / Workflow
 
 ---
 
-# PARTE XVII — PREGUNTAS TÍPICAS DE ENTREVISTA
+# PARTE 17 — PREGUNTAS TÍPICAS DE ENTREVISTA
 
 # Preguntas conceptuales
 
@@ -2614,9 +2614,9 @@ Automation rate
 
 ---
 
-# PARTE XVIII — PREGUNTAS DE COMPORTAMIENTO TÉCNICO
+# PARTE 18 — PREGUNTAS DE COMPORTAMIENTO TÉCNICO
 
-# 1. ¿Qué haces cuando no conoces una tecnología?
+# ¿Qué haces cuando no conoces una tecnología?
 
 Respuesta:
 
@@ -2624,7 +2624,7 @@ Respuesta:
 
 ---
 
-# 2. ¿Qué haces cuando negocio quiere algo en dos semanas y técnicamente tarda dos meses?
+# ¿Qué haces cuando negocio quiere algo en dos semanas y técnicamente tarda dos meses?
 
 Respuesta:
 
@@ -2632,7 +2632,7 @@ Respuesta:
 
 ---
 
-# 3. ¿Qué priorizas: velocidad o calidad?
+# ¿Qué priorizas: velocidad o calidad?
 
 Respuesta:
 
@@ -2640,7 +2640,7 @@ Respuesta:
 
 ---
 
-# PARTE XIX — EJERCICIOS DE PRÁCTICA
+# PARTE 19 — EJERCICIOS DE PRÁCTICA
 
 # NO MIRAR SOLUCIONES
 
@@ -2908,7 +2908,7 @@ Construye una arquitectura completa.
 
 ---
 
-# PARTE XX — SOLUCIONES DE LOS EJERCICIOS
+# PARTE 20 — SOLUCIONES DE LOS EJERCICIOS
 
 # Solución 1 — Clasificación de correos
 
@@ -3364,7 +3364,7 @@ flowchart TD
 
 ---
 
-# PARTE XXI — PREGUNTAS DE NIVEL MÁS ALTO
+# PARTE 21 — PREGUNTAS DE NIVEL MÁS ALTO
 
 ## 1. ¿Por qué un agente y no un workflow?
 
@@ -3451,7 +3451,7 @@ Así el resto de la aplicación depende de una interfaz común, no del proveedor
 
 ---
 
-# PARTE XXII — PREGUNTAS DE “PIZARRA”
+# PARTE 22 — PREGUNTAS DE “PIZARRA”
 
 Practica dibujando estas cinco sin mirar.
 
@@ -3485,7 +3485,7 @@ Practica dibujando estas cinco sin mirar.
 
 ---
 
-# PARTE XXIII — RESPUESTAS CORTAS PARA MEMORIZAR
+# PARTE 23 — RESPUESTAS CORTAS PARA MEMORIZAR
 
 ### ¿Qué es un agente?
 
@@ -3537,7 +3537,7 @@ Practica dibujando estas cinco sin mirar.
 
 ---
 
-# PARTE XXIV — CHECKLIST DE ESTUDIO
+# PARTE 24 — CHECKLIST DE ESTUDIO
 
 ## Inteligencia Artificial
 
@@ -3661,7 +3661,7 @@ Practica dibujando estas cinco sin mirar.
 
 ---
 
-# PARTE XXV — REGLA PARA RESOLVER CUALQUIER CASO
+# PARTE 25 — REGLA PARA RESOLVER CUALQUIER CASO
 
 Cuando el entrevistador te entregue un problema, piensa:
 
@@ -3700,7 +3700,7 @@ Cuando el entrevistador te entregue un problema, piensa:
 
 ---
 
-# PARTE XXVI — RESPUESTA MODELO PARA UN CASO COMPLEJO
+# PARTE 26 — RESPUESTA MODELO PARA UN CASO COMPLEJO
 
 Si te dicen:
 
@@ -3720,7 +3720,7 @@ Puedes empezar:
 
 ---
 
-# PARTE XXVII — TU “MAPA MENTAL” FINAL
+# PARTE 27 — TU “MAPA MENTAL” FINAL
 
 ```mermaid
 flowchart TD
@@ -3758,7 +3758,7 @@ flowchart TD
 
 ---
 
-# PARTE XXVIII — LAS 15 IDEAS QUE DEBES RECORDAR
+# PARTE 28 — LAS 15 IDEAS QUE DEBES RECORDAR
 
 ## 1
 

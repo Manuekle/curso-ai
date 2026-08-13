@@ -16,7 +16,7 @@ Regla crítica (#66):
 export function AlucinacionesLesson() {
   return (
     <LessonShell
-      title="Alucinaciones: por qué y cómo mitigarlas (#64-66)"
+      title="Alucinaciones: por qué y cómo mitigarlas"
       tag="doc.md #64-66 · #27"
       intro={
         <>

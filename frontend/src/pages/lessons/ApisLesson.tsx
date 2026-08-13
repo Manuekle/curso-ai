@@ -23,7 +23,7 @@ Rate limiting: 100 req/min protege abuso, saturación y costos.`
 export function ApisLesson() {
   return (
     <LessonShell
-      title="APIs: REST, webhooks, retry, idempotencia (#36-42)"
+      title="APIs: REST, webhooks, retry, idempotencia"
       tag="doc.md #36-42 · server/server.ts"
       intro={
         <>

@@ -91,7 +91,7 @@ export function ProduccionLesson() {
 
   return (
     <LessonShell
-      title="Producción: observabilidad, caching, queues, streaming (#47-54)"
+      title="Producción: observabilidad, caching, queues, streaming"
       tag="doc.md #47-54 · “Streaming y latencia” · server/server.ts"
       intro={
         <>

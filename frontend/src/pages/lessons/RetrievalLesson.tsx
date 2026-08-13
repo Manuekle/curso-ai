@@ -111,7 +111,7 @@ export function RetrievalLesson() {
 
   return (
     <LessonShell
-      title="Retrieval: top-K, permisos, hybrid y rerank (#25, #28)"
+      title="Retrieval: top-K, permisos, hybrid y rerank"
       tag="doc.md #25 · #28 · “Reranking y búsqueda híbrida” · server/rag.ts"
       intro={
         <>

@@ -37,7 +37,7 @@ const QUINCE = `Las 15 ideas que debés recordar (#XXVIII):
 export function EntrevistaLesson() {
   return (
     <LessonShell
-      title="Simulacro: respuestas cortas, 15 ideas, método (#XVII-XXVIII)"
+      title="Simulacro: respuestas cortas, 15 ideas, método"
       tag="doc.md #XVII-XXVIII · todo el material"
       intro={
         <>

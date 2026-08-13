@@ -84,7 +84,7 @@ const SOLUCIONES = [
 export function EjerciciosLesson() {
   return (
     <LessonShell
-      title="Ejercicios de práctica (#XIX-XX)"
+      title="Ejercicios de práctica"
       tag="doc.md ejercicios 1-13 · resolvé sin mirar la solución"
       intro={
         <>

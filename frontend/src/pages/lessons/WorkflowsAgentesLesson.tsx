@@ -15,7 +15,7 @@ Código + Reglas + APIs → no necesitás un LLM para esto.`
 export function WorkflowsAgentesLesson() {
   return (
     <LessonShell
-      title="Workflows vs agentes: cuándo usar IA (#7-12)"
+      title="Workflows vs agentes: cuándo usar IA"
       tag="doc.md #7-12"
       intro={
         <>

@@ -31,9 +31,44 @@ function computeHeadingIds(source: string): string[] {
 
 const MERMAID_URL = "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs"
 
+// Mermaid's "base" theme runs its own color math (lighten/darken via khroma)
+// on themeVariables, so it can't take raw `var(--foo)` strings, and it can't
+// parse `oklch(...)` either (our light-mode palette uses oklch). Resolve each
+// CSS custom property through a canvas 2D context, which always normalizes
+// whatever color syntax it's given down to a plain "rgba(...)" string.
+function resolveColorVar(name: string): string {
+  const probe = document.createElement("span")
+  probe.style.color = `var(${name})`
+  document.body.appendChild(probe)
+  const raw = getComputedStyle(probe).color
+  document.body.removeChild(probe)
+  const canvas = document.createElement("canvas")
+  canvas.width = 1
+  canvas.height = 1
+  const ctx = canvas.getContext("2d")
+  if (!ctx) return raw
+  ctx.fillStyle = raw
+  ctx.fillRect(0, 0, 1, 1)
+  const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data
+  return `rgba(${r}, ${g}, ${b}, ${a / 255})`
+}
+
+function useIsDark(): boolean {
+  const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains("dark"))
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setIsDark(document.documentElement.classList.contains("dark"))
+    })
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] })
+    return () => observer.disconnect()
+  }, [])
+  return isDark
+}
+
 function MermaidBlock({ code }: { code: string }) {
   const ref = useRef<HTMLDivElement>(null)
   const [error, setError] = useState<string | null>(null)
+  const isDark = useIsDark()
 
   useEffect(() => {
     let cancelled = false
@@ -41,13 +76,47 @@ function MermaidBlock({ code }: { code: string }) {
       try {
         const mod = await import(/* @vite-ignore */ MERMAID_URL)
         const mermaid = mod.default
+        const colors = {
+          card: resolveColorVar("--card"),
+          foreground: resolveColorVar("--foreground"),
+          border: resolveColorVar("--border"),
+          muted: resolveColorVar("--muted"),
+          mutedForeground: resolveColorVar("--muted-foreground"),
+        }
         mermaid.initialize({
           startOnLoad: false,
-          theme: "default",
+          theme: "base",
           securityLevel: "strict",
           fontFamily: "'Inter Variable', 'Inter', sans-serif",
-          themeVariables: { fontFamily: "'Inter Variable', 'Inter', sans-serif" },
-          themeCSS: ".node rect, .node polygon { rx: 10px; ry: 10px; }",
+          themeVariables: {
+            fontFamily: "'Inter Variable', 'Inter', sans-serif",
+            fontSize: "14px",
+            background: colors.card,
+            mainBkg: colors.card,
+            primaryColor: colors.card,
+            primaryTextColor: colors.foreground,
+            primaryBorderColor: colors.border,
+            secondaryColor: colors.muted,
+            secondaryTextColor: colors.foreground,
+            secondaryBorderColor: colors.border,
+            tertiaryColor: colors.muted,
+            tertiaryTextColor: colors.foreground,
+            tertiaryBorderColor: colors.border,
+            lineColor: colors.mutedForeground,
+            textColor: colors.foreground,
+            nodeTextColor: colors.foreground,
+            nodeBorder: colors.border,
+            clusterBkg: colors.muted,
+            clusterBorder: colors.border,
+            titleColor: colors.foreground,
+            edgeLabelBackground: colors.card,
+            labelBackground: colors.card,
+          },
+          themeCSS: `
+            .node rect, .node polygon, .node circle { rx: 10px; ry: 10px; stroke-width: 1px; }
+            .edgePath .path { stroke-width: 1.5px; }
+            .cluster rect { rx: 10px; ry: 10px; }
+          `,
         })
         const id = `mmd-${Math.random().toString(36).slice(2)}`
         const { svg } = await mermaid.render(id, code)
@@ -59,7 +128,7 @@ function MermaidBlock({ code }: { code: string }) {
     return () => {
       cancelled = true
     }
-  }, [code])
+  }, [code, isDark])
 
   if (error) {
     return (

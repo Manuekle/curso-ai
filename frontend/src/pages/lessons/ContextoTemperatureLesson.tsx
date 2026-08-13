@@ -20,7 +20,7 @@ Importante: temperature NO convierte un modelo en "más inteligente".`
 export function ContextoTemperatureLesson() {
   return (
     <LessonShell
-      title="Context window y temperature (#3, #5)"
+      title="Context window y temperature"
       tag="doc.md #3 · #5"
       intro={
         <>

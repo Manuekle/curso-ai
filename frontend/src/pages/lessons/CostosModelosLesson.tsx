@@ -74,7 +74,7 @@ export function CostosModelosLesson() {
 
   return (
     <LessonShell
-      title="Costos y elección de modelos (#55-60)"
+      title="Costos y elección de modelos"
       tag="doc.md #55-60 · server/llm.ts"
       intro={
         <>

@@ -41,7 +41,7 @@ Data access
 export function PromptsStructuredLesson() {
   return (
     <LessonShell
-      title="Prompts y structured output (#4, #6)"
+      title="Prompts y structured output"
       tag="doc.md #4 · #6 · prompt≠seguridad"
       intro={
         <>

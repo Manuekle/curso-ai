@@ -90,7 +90,7 @@ export function MultiagentesLesson() {
 
   return (
     <LessonShell
-      title="Multiagentes, orquestador y human-in-the-loop (#15-20)"
+      title="Multiagentes, orquestador y human-in-the-loop"
       tag="doc.md #15-20 · “HITL: patrones” · server/app.ts"
       intro={
         <>

@@ -31,7 +31,7 @@ herramientas y contexto. NO reemplaza auth ni reglas de negocio.`
 export function ArquitecturaLesson() {
   return (
     <LessonShell
-      title="Arquitectura empresarial: ERP, Workspace, MCP (#43-46, #67)"
+      title="Arquitectura empresarial: ERP, Workspace, MCP"
       tag="doc.md #43-46 · #67-68"
       intro={
         <>

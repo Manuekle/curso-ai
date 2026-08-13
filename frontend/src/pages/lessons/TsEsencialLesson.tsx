@@ -42,7 +42,7 @@ const lowStock = products.filter((p) => p.stock < 10);`
 export function TsEsencialLesson() {
   return (
     <LessonShell
-      title="TypeScript esencial para la entrevista (#71-75)"
+      title="TypeScript esencial para la entrevista"
       tag="doc.md #71-75 · código real de esta web"
       intro={
         <>

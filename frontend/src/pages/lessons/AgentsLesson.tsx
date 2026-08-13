@@ -31,7 +31,7 @@ throw new Error(\`maxIterations (\${MAX_ITERATIONS}) alcanzado\`); // loop corta
 export function AgentsLesson() {
   return (
     <LessonShell
-      title="Agente con tool calling (#13, #14)"
+      title="Agente con tool calling"
       tag="doc.md #13 · #14 · #19 · server/agent.ts"
       intro={
         <>

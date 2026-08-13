@@ -76,7 +76,7 @@ export function SeguridadLesson() {
 
   return (
     <LessonShell
-      title="Seguridad: auth, autorización, datos e inyección (#29-35)"
+      title="Seguridad: auth, autorización, datos e inyección"
       tag="doc.md #29-35 · “Amenazas específicas de LLM” · server/app.ts"
       intro={
         <>

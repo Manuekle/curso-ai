@@ -39,7 +39,7 @@ const CASOS = [
 export function CasosLesson() {
   return (
     <LessonShell
-      title="Casos de arquitectura (#1976-2000, CASOS 1-6)"
+      title="Casos de arquitectura"
       tag="doc.md CASO 1-6 · regla general #XXV"
       intro={
         <>

@@ -35,7 +35,7 @@ export async function ask(question: string, user = "demo") {
 export function RagLesson() {
   return (
     <LessonShell
-      title="RAG: el pipeline completo (#22, #26, #27)"
+      title="RAG: el pipeline completo"
       tag="doc.md #21-28 · server/rag.ts"
       intro={
         <>

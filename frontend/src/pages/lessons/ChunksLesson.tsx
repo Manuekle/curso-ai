@@ -37,7 +37,7 @@ export function ChunksLesson() {
 
   return (
     <LessonShell
-      title="Chunking: partir documentos (#23)"
+      title="Chunking: partir documentos"
       tag="doc.md #23 · server/rag.ts"
       intro={
         <>
