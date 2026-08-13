@@ -2,7 +2,7 @@
 // RAG completo (doc #22-28): chunk → embedding → vector store → retrieve → filtro permisos → LLM.
 // Store en memoria (local, sin infra). Para prod: pgvector / Pinecone / Qdrant (#25).
 
-import { chatCompletion, chatModel, client, embeddingModel } from "./llm";
+import { chatCompletion, chatModel, client, embeddingModel } from "./llm.js";
 
 // ── 1. CHUNKING (#23) ──
 export function chunkText(text: string, size = 800, overlap = 100): string[] {

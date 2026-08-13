@@ -1,4 +1,10 @@
 {
   "buildCommand": "npm run build",
-  "installCommand": "npm install"
+  "installCommand": "npm install",
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "https://curso-ai-api.vercel.app/api/$1"
+    }
+  ]
 }

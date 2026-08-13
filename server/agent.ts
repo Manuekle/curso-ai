@@ -3,7 +3,7 @@
 // Tools autorizadas = frontera de permisos. Límites externos = #19 (maxIterations, timeout, costBudget).
 
 import type OpenAI from "openai";
-import { chatCompletion, chatModel } from "./llm";
+import { chatCompletion, chatModel } from "./llm.js";
 
 export const MAX_ITERATIONS = 4;
 export const MAX_TOOL_CALLS = 6;

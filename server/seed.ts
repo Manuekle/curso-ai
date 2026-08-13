@@ -3,7 +3,7 @@
 // También se usa como función: server.ts la llama al boot si la store está vacía.
 
 import "dotenv/config";
-import { indexDocument, store } from "./rag";
+import { indexDocument, store } from "./rag.js";
 
 const docs = [
   {

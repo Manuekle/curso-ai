@@ -2,7 +2,7 @@
 // Multiagente con orquestador (doc #18): ejecuta agentes especializados en paralelo (#75),
 // evalúa resultados y sintetiza. Límites de costo/latencia por fuera (#19).
 
-import { chatCompletion, chatModel } from "./llm";
+import { chatCompletion, chatModel } from "./llm.js";
 
 interface SpecializedResult {
   agent: string;
