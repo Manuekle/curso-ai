@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button"
 import { useTheme } from "@/components/theme-provider"
 import { Playground } from "@/pages/Playground"
 import { DocsPage } from "@/pages/DocsPage"
+import { AgentCreator } from "@/pages/AgentCreator"
 import { FundamentosLesson } from "@/pages/lessons/FundamentosLesson"
 import { ContextoTemperatureLesson } from "@/pages/lessons/ContextoTemperatureLesson"
 import { PromptsStructuredLesson } from "@/pages/lessons/PromptsStructuredLesson"
@@ -113,11 +114,7 @@ function linkClass(isActive: boolean) {
 }
 
 function ProBadge() {
-  return (
-    <span className="w-fit shrink-0 rounded-full bg-[var(--pro-bg)] px-[6px] py-[2px] text-[10px] leading-none text-[var(--pro-fg)]">
-      Pro
-    </span>
-  )
+  return <span className="docs-pro-pill">Pro</span>
 }
 
 function NavLists() {
@@ -202,7 +199,7 @@ function SearchModal({ open, onClose }: { open: boolean; onClose: () => void }) 
     window.setTimeout(() => {
       setClosing(false)
       onClose()
-    }, 150)
+    }, 350)
   }
 
   const go = (to: string) => {
@@ -225,11 +222,8 @@ function SearchModal({ open, onClose }: { open: boolean; onClose: () => void }) 
           role="dialog"
           aria-modal="true"
           aria-label="Buscar"
-          className={cn(
-            "t-modal rounded-[22px] border border-border bg-popover p-6",
-            shown && "is-open",
-            closing && "is-closing"
-          )}
+          className="t-panel-slide rounded-[22px] border border-border bg-popover p-6"
+          data-open={shown && !closing}
         >
           <div className="flex items-center justify-between">
             <p className="text-[13px] text-muted-foreground">Buscar</p>
@@ -361,10 +355,26 @@ function Header({ onMenu, onSearch }: HeaderProps) {
             onClick={() => setTheme(isDark ? "light" : "dark")}
             aria-label="Cambiar tema"
           >
-            <span key={isDark ? "sun" : "moon"} className="anim-pop flex">
-              {isDark ? <RiSunLine className="size-4" /> : <RiMoonLine className="size-4" />}
+            <span
+              className="t-icon-swap anim-spring"
+              data-state={isDark ? "b" : "a"}
+              key={isDark ? "dark" : "light"}
+            >
+              <span className="t-icon" data-icon="a">
+                <RiMoonLine className="size-4" />
+              </span>
+              <span className="t-icon" data-icon="b">
+                <RiSunLine className="size-4" />
+              </span>
             </span>
           </Button>
+
+          <NavLink
+            to="/agents"
+            className="hidden h-9 items-center gap-1.5 rounded-full bg-secondary px-4 text-[13px] text-secondary-foreground transition-colors duration-150 hover:bg-secondary/80 sm:inline-flex"
+          >
+            Mis Agentes
+          </NavLink>
 
           <NavLink
             to="/aprender/entrevista"
@@ -407,6 +417,7 @@ function AppRoutes() {
         <Route path="/aprender/ejercicios" element={<EjerciciosLesson />} />
         <Route path="/aprender/ts-esencial" element={<TsEsencialLesson />} />
         <Route path="/aprender/entrevista" element={<EntrevistaLesson />} />
+        <Route path="/agents" element={<AgentCreator />} />
       </Routes>
     </div>
   )
@@ -509,11 +520,11 @@ function AppShell() {
                 setDrawerOpen(false)
                 setSearchOpen(true)
               }}
-              className="flex h-9 cursor-pointer items-center gap-2 rounded-full bg-muted px-3 text-muted-foreground transition-colors duration-150 hover:bg-secondary"
+              className="flex h-14 w-full cursor-pointer items-center gap-3 rounded-xl bg-muted px-4 text-muted-foreground transition-colors duration-150 hover:bg-secondary"
             >
-              <RiSearchLine className="size-4 shrink-0" />
-              <span className="flex-1 text-left text-[13px]">Buscar lección…</span>
-              <kbd className="rounded-md bg-secondary px-1.5 py-0.5 text-[10px] text-muted-foreground">
+              <RiSearchLine className="size-5 shrink-0" />
+              <span className="flex-1 text-left text-sm">Buscar lección…</span>
+              <kbd className="rounded-md bg-secondary px-2 py-1 text-xs text-muted-foreground">
                 ⌘K
               </kbd>
             </button>

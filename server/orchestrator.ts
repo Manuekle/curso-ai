@@ -2,7 +2,7 @@
 // Multiagente con orquestador (doc #18): ejecuta agentes especializados en paralelo (#75),
 // evalúa resultados y sintetiza. Límites de costo/latencia por fuera (#19).
 
-import { chatCompletion, chatModel } from "./llm.js";
+import { chatCompletion, Provider } from "./llm.js";
 
 interface SpecializedResult {
   agent: string;
@@ -11,9 +11,9 @@ interface SpecializedResult {
 }
 
 // Agente especializado genérico: cada uno tiene rol + criterio de evaluación propios
-async function specialized(agentName: string, role: string, question: string): Promise<SpecializedResult> {
-  const res = await chatCompletion({
-    model: chatModel(),
+async function specialized(agentName: string, role: string, question: string, apiKey?: string, provider: Provider = "openai"): Promise<SpecializedResult> {
+  const config = { provider, apiKey };
+  const res = await chatCompletion(config, {
     messages: [
       { role: "system", content: role },
       { role: "user", content: question },
@@ -41,7 +41,8 @@ export interface OrchestrationResult {
 }
 
 // Orquestador: decide qué agentes corren, paraleliza, evalúa y sintetiza
-export async function orchestrate(question: string): Promise<OrchestrationResult> {
+export async function orchestrate(question: string, apiKey?: string, provider: Provider = "openai"): Promise<OrchestrationResult> {
+  const config = { provider, apiKey };
   // Free tier de OpenRouter es lento (colas upstream): 120s de margen (#19 timeout externo)
   const timeoutMs = 120_000;
 
@@ -70,15 +71,15 @@ export async function orchestrate(question: string): Promise<OrchestrationResult
   const work = (async () => {
     // Promise.all → latencia = peor agente, no la suma (#75)
     const results = await Promise.all(
-      agents.map((a) => specialized(a.name, a.role, question))
+      agents.map((a) => specialized(a.name, a.role, question, apiKey, provider))
     );
+
 
     // Evaluación: la confianza final = la más baja (visión conservadora)
     const finalConfidence = Math.min(...results.map((r) => r.confidence));
 
     // Síntesis: un LLM combina los outputs en una respuesta coherente
-    const summaryRes = await chatCompletion({
-      model: chatModel(),
+    const summaryRes = await chatCompletion(config, {
       messages: [
         {
           role: "system",

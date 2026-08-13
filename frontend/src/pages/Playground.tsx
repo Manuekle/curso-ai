@@ -3,13 +3,15 @@ import { RiCheckLine, RiCloseLine, RiFileLine, RiLoader4Line, RiUploadCloud2Line
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { SlidingTabs } from "@/components/SlidingTabs"
 import { Textarea } from "@/components/ui/textarea"
 
 type Mode = "agent" | "rag" | "orchestrate"
+type Provider = "openai" | "gemini" | "groq" | "openrouter"
 
 type UploadItem = {
   file: File
@@ -83,6 +85,24 @@ export function Playground() {
   const [meta, setMeta] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const [provider, setProvider] = useState<Provider>(() => (localStorage.getItem("active-provider") as Provider) || "openai")
+  const [apiKeys, setApiKeys] = useState<Record<Provider, string>>(() => 
+    JSON.parse(localStorage.getItem("api-keys") || '{"openai":"","gemini":"","groq":"","openrouter":""}')
+  )
+
+  useEffect(() => {
+    const activeAgent = localStorage.getItem("active-agent")
+    if (activeAgent) {
+      const agent = JSON.parse(activeAgent) as { instructions?: string; provider?: Provider }
+      if (agent.instructions) {
+        setQuestion(`System Instructions:\n${agent.instructions}`)
+      }
+      if (agent.provider) {
+        setProvider(agent.provider)
+      }
+      localStorage.removeItem("active-agent")
+    }
+  }, [])
 
   const [docText, setDocText] = useState("")
   const [docOwner, setDocOwner] = useState("demo")
@@ -91,6 +111,11 @@ export function Playground() {
   const [uploads, setUploads] = useState<UploadItem[]>([])
   const [dragging, setDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    localStorage.setItem("active-provider", provider)
+    localStorage.setItem("api-keys", JSON.stringify(apiKeys))
+  }, [provider, apiKeys])
 
   async function send() {
     setLoading(true)
@@ -101,7 +126,11 @@ export function Playground() {
       const res = await fetch(ENDPOINTS[mode], {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question, user: "demo" }),
+        body: JSON.stringify({ 
+          question, 
+          user: "demo", 
+          config: { provider, apiKey: apiKeys[provider] } 
+        }),
       })
       if (!res.ok) {
         const body = await res.json().catch(() => null)
@@ -193,9 +222,30 @@ export function Playground() {
     <Card className="mx-auto w-full max-w-2xl">
       <CardHeader className="px-8">
         <CardTitle>Práctica local</CardTitle>
-        <CardDescription>Backend local :4000 · modelos vía OpenRouter · teoría en las lecciones</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4 px-8">
+        <div className="flex gap-2">
+          <Select 
+            value={provider} 
+            onValueChange={(v) => setProvider(v as Provider)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Proveedor" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="openai">OpenAI</SelectItem>
+              <SelectItem value="gemini">Gemini</SelectItem>
+              <SelectItem value="groq">Groq</SelectItem>
+              <SelectItem value="openrouter">OpenRouter</SelectItem>
+            </SelectContent>
+          </Select>
+          <Input
+            type="password"
+            value={apiKeys[provider]}
+            onChange={(e) => setApiKeys(prev => ({ ...prev, [provider]: e.target.value }))}
+            placeholder={`API Key para ${provider}`}
+          />
+        </div>
         <div className="flex flex-col gap-4">
           <SlidingTabs
             fill

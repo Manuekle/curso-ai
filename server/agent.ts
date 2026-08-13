@@ -3,7 +3,7 @@
 // Tools autorizadas = frontera de permisos. Límites externos = #19 (maxIterations, timeout, costBudget).
 
 import type OpenAI from "openai";
-import { chatCompletion, chatModel } from "./llm.js";
+import { chatCompletion, Provider } from "./llm.js";
 
 export const MAX_ITERATIONS = 4;
 export const MAX_TOOL_CALLS = 6;
@@ -80,7 +80,8 @@ export interface AgentResult {
   iterations: number;
 }
 
-export async function runAgent(question: string, user = "demo"): Promise<AgentResult> {
+export async function runAgent(question: string, user = "demo", apiKey?: string, provider: Provider = "openai"): Promise<AgentResult> {
+  const config = { provider, apiKey };
   const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
     {
       role: "system",
@@ -99,14 +100,13 @@ export async function runAgent(question: string, user = "demo"): Promise<AgentRe
     if (toolCalls >= MAX_TOOL_CALLS) throw new Error("maxToolCalls alcanzado");
 
     const res = await chatCompletion(
+      config,
       {
-        model: chatModel(),
         temperature: 0, // #5 baja temperatura → consistencia
         messages,
         tools: TOOLS,
         tool_choice: "auto", // el modelo decide si llama una tool o responde
-      },
-      { signal: AbortSignal.timeout(TIMEOUT_MS) } // #19 timeout externo
+      }
     );
 
     const msg = res.choices[0].message;

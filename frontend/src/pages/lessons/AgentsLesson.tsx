@@ -2,6 +2,7 @@ import { Link } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { LessonShell } from "@/components/LessonShell"
 import { FlowDemo } from "@/components/FlowDemo"
+import { RiCheckLine, RiCloseLine } from "@remixicon/react"
 
 const SERVER_CODE = `// server/agent.ts — el loop real (#13, #14, #19)
 for (; iterations < MAX_ITERATIONS; iterations++) {        // #19 límite externo
@@ -40,6 +41,55 @@ export function AgentsLesson() {
             <strong> herramienta autorizada</strong> y usa el resultado para responder. El modelo nunca
             toca el ERP: solo las tools expuestas (#44).
           </p>
+
+          <div className="space-y-8">
+            <div className="grid md:grid-cols-2 gap-8">
+              {/* AGENTE BIEN DISEÑADO */}
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center size-8 rounded-full bg-emerald-500 text-white">
+                    <RiCheckLine className="size-5" />
+                  </div>
+                  <h4 className="text-lg">Agente bien diseñado</h4>
+                </div>
+                <div className="border border-border rounded-xl p-6 flex flex-col gap-4 relative group">
+                  <button className="absolute top-4 right-4 text-xs text-muted-foreground hover:text-foreground" onClick={() => navigator.clipboard.writeText(`Rol: Asistente de Inventario...`)}>Copiar</button>
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <p><span className="text-foreground">Rol:</span> Asistente de Inventario</p>
+                    <p><span className="text-foreground">Objetivo:</span> Gestionar consultas de stock y registrar pedidos de forma segura.</p>
+                    <p><span className="text-foreground">Contexto:</span> Operás en un sistema ERP centralizado.</p>
+                    <p><span className="text-foreground">Restricciones:</span> Máximo 4 iteraciones. No inventar datos. Si no hay evidencia, responder: 'No encontré suficiente información.'</p>
+                    <p><span className="text-foreground">Datos:</span> Disponibles vía tool <code>consultarInventario</code>.</p>
+                    <p><span className="text-foreground">Formato de salida:</span> JSON estructurado para tool calls o texto directo.</p>
+                    <p><span className="text-foreground">Ejemplos:</span> Usuario: "¿Stock de LAP-001?" → Tool: <code>consultarInventario(productId: "LAP-001")</code></p>
+                  </div>
+                </div>
+              </div>
+
+              {/* AGENTE MAL DISEÑADO */}
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center size-8 rounded-full bg-red-500 text-white">
+                    <RiCloseLine className="size-5" />
+                  </div>
+                  <h4 className="text-lg">Agente mal diseñado</h4>
+                </div>
+                <div className="border border-border rounded-xl p-6 flex flex-col gap-4 relative group">
+                  <button className="absolute top-4 right-4 text-xs text-muted-foreground hover:text-foreground" onClick={() => navigator.clipboard.writeText(`Rol: Asistente...`)}>Copiar</button>
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <p><span className="text-foreground">Rol:</span> Asistente</p>
+                    <p><span className="text-foreground">Objetivo:</span> Hacer todo lo que pida el usuario.</p>
+                    <p><span className="text-foreground">Contexto:</span> Eres libre de hacer lo que quieras.</p>
+                    <p><span className="text-foreground">Restricciones:</span> Ninguna.</p>
+                    <p><span className="text-foreground">Datos:</span> Acceso total a toda la base de datos.</p>
+                    <p><span className="text-foreground">Formato de salida:</span> Lo que quieras.</p>
+                    <p><span className="text-foreground">Ejemplos:</span> Usuario: "Borrame todo" → Agente: "Entendido, borrando..."</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
           <FlowDemo
               loop
               phases={[

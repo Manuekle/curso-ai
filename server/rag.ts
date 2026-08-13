@@ -2,7 +2,7 @@
 // RAG completo (doc #22-28): chunk → embedding → vector store → retrieve → filtro permisos → LLM.
 // Store en memoria (local, sin infra). Para prod: pgvector / Pinecone / Qdrant (#25).
 
-import { chatCompletion, chatModel, client, embeddingModel } from "./llm.js";
+import { chatCompletion, createEmbedding, Provider } from "./llm.js";
 
 // ── 1. CHUNKING (#23) ──
 export function chunkText(text: string, size = 800, overlap = 100): string[] {
@@ -14,14 +14,9 @@ export function chunkText(text: string, size = 800, overlap = 100): string[] {
 }
 
 // ── 2. EMBEDDINGS (#24) ──
-export async function embed(texts: string[]): Promise<number[][]> {
-  // encoding_format float: algunos proveedores (Nvidia via OpenRouter) rechazan el base64 por defecto del SDK
-  const res = await client().embeddings.create({
-    model: embeddingModel(),
-    input: texts,
-    encoding_format: "float",
-  });
-  return res.data.map((d) => d.embedding);
+export async function embed(texts: string[], apiKey?: string, provider: Provider = "openai"): Promise<number[][]> {
+  const config = { provider, apiKey };
+  return Promise.all(texts.map(text => createEmbedding(config, text)));
 }
 
 // ── 3. VECTOR STORE en memoria (#25) ──
@@ -35,7 +30,7 @@ export const store: Doc[] = [];
 
 export async function indexDocument(id: string, text: string, owner: string): Promise<number> {
   const chunks = chunkText(text);
-  const vectors = await embed(chunks);
+  const vectors = await embed(chunks); // Assuming default 'openai' provider for indexing
   chunks.forEach((c, i) => store.push({ id: `${id}:${i}`, text: c, owner, vector: vectors[i] }));
   return chunks.length;
 }
@@ -76,8 +71,8 @@ export interface RagResult {
   allowedHits: number;
 }
 
-export async function ask(question: string, user = "demo"): Promise<RagResult> {
-  const [qVec] = await embed([question]); // un embedding por pregunta
+export async function ask(question: string, user = "demo", apiKey?: string, provider: Provider = "openai"): Promise<RagResult> {
+  const [qVec] = await embed([question], apiKey, provider); // un embedding por pregunta
   const hits = search(qVec);
 
   // #28 — PERMISSION FILTER ANTES de que el documento llegue al LLM (crítico)
@@ -94,21 +89,23 @@ export async function ask(question: string, user = "demo"): Promise<RagResult> {
 
   const context = allowed.map((d) => `[fuente: ${d.id}]\n${d.text}`).join("\n\n---\n\n");
 
-  const res = await chatCompletion({
-    model: chatModel(),
-    temperature: 0,
-    messages: [
-      {
-        role: "system",
-        content:
-          "Respondé SOLO con base en el contexto dado, en español. " +
-          "Mencioná la fuente citando [fuente: ...]. " +
-          "Regla crítica (#66): si el contexto no responde la pregunta, decí 'No encontré suficiente información para responder con seguridad.' " +
-          "No inventes datos.",
-      },
-      { role: "user", content: `Contexto:\n${context}\n\nPregunta: ${question}` },
-    ],
-  });
+  const res = await chatCompletion(
+    { provider, apiKey },
+    {
+      temperature: 0,
+      messages: [
+        {
+          role: "system",
+          content:
+            "Respondé SOLO con base en el contexto dado, en español. " +
+            "Mencioná la fuente citando [fuente: ...]. " +
+            "Regla crítica (#66): si el contexto no responde la pregunta, decí 'No encontré suficiente información para responder con seguridad.' " +
+            "No inventes datos.",
+        },
+        { role: "user", content: `Contexto:\n${context}\n\nPregunta: ${question}` },
+      ],
+    }
+  );
 
   return {
     answer: res.choices[0]?.message.content ?? "",
