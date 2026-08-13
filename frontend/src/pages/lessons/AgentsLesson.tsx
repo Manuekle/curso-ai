@@ -87,8 +87,8 @@ export function AgentsLesson() {
                 <p className="text-xs text-muted-foreground">
                   Delimita rol, límites de ejecución, regla de fallback ante falta de datos y tools autorizadas.
                 </p>
-                <div className="mt-1">
-                  <CodeBlock label="system-prompt.txt" code={WELL_DESIGNED_PROMPT} />
+                <div className="mt-1 flex-1 flex flex-col">
+                  <CodeBlock label="system-prompt.txt" code={WELL_DESIGNED_PROMPT} className="h-full flex-1" />
                 </div>
               </div>
 
@@ -110,8 +110,8 @@ export function AgentsLesson() {
                 <p className="text-xs text-muted-foreground">
                   Sin límites de iteración, sin tools explícitas, vulnerable a prompt injection y alucinaciones.
                 </p>
-                <div className="mt-1">
-                  <CodeBlock label="prompt-inseguro.txt" code={BAD_DESIGNED_PROMPT} />
+                <div className="mt-1 flex-1 flex flex-col">
+                  <CodeBlock label="prompt-inseguro.txt" code={BAD_DESIGNED_PROMPT} className="h-full flex-1" />
                 </div>
               </div>
             </div>

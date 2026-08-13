@@ -1,12 +1,13 @@
 import { useState } from "react"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { LessonShell } from "@/components/LessonShell"
+import { CodeBlock } from "@/components/CodeBlock"
 import { NumberPopIn } from "@/components/NumberPopIn"
+import { AIErrorCard } from "@/components/AIErrorCard"
 
 const SERVER_CODE = `// server/rag.ts — lo que corre en tu backend (#24)
 export async function embed(texts: string[]): Promise<number[][]> {
@@ -62,7 +63,10 @@ export function EmbeddingsLesson() {
           body: JSON.stringify({ a: ta, b: tb, config }),
         }),
       ])
-      if (!emb.ok || !sim.ok) throw new Error(`HTTP ${emb.status}/${sim.status}`)
+      if (!emb.ok || !sim.ok) {
+        const errData = await (!emb.ok ? emb : sim).json().catch(() => null)
+        throw new Error(errData?.error ?? `HTTP ${emb.status}/${sim.status}`)
+      }
       setResult(await emb.json())
       const simData = await sim.json()
       setCos(simData.cosine)
@@ -138,12 +142,7 @@ export function EmbeddingsLesson() {
             </Button>
           </div>
 
-          {error && (
-            <Alert variant="destructive">
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription className="break-all">{error}</AlertDescription>
-            </Alert>
-          )}
+          {error && <AIErrorCard error={error} />}
 
           {cos !== null && result && (
             <div className="flex flex-col gap-3">
@@ -160,9 +159,7 @@ export function EmbeddingsLesson() {
                 <p className="text-xs text-muted-foreground">
                   Dimensión del vector: <NumberPopIn value={result.dims} /> (texto: “{a}”)
                 </p>
-                <pre className="overflow-x-auto rounded-lg border bg-muted p-3 font-mono text-xs">
-                  [{result.sample.join(", ")}, … {result.dims - result.sample.length} valores más]
-                </pre>
+                <CodeBlock label={`vector-${result.dims}d.json`} code={`[${result.sample.join(", ")}, … ${result.dims - result.sample.length} valores más]`} />
               </div>
             </div>
           )}

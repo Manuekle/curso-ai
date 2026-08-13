@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { LessonShell } from "@/components/LessonShell"
+import { CodeBlock } from "@/components/CodeBlock"
 import { LiquidSlider } from "@/components/LiquidSlider"
 import { NumberPopIn } from "@/components/NumberPopIn"
 
@@ -35,12 +36,12 @@ export function ContextoTemperatureLesson() {
             El <strong>context window</strong> es la cantidad máxima de información que el modelo procesa
             por interacción. Error común: &quot;si soporta mucho contexto, le mando todo&quot;. No necesariamente.
           </p>
-          <pre className="whitespace-pre-wrap rounded-lg border bg-muted p-4 font-mono text-xs">{TRADE_OFF}</pre>
+          <CodeBlock label="context-window-tradeoffs.txt" code={TRADE_OFF} />
           <p>
             La <strong>temperature</strong> controla (simplificado) cuánto varía la generación. Baja =
             consistencia; alta = variabilidad creativa.
           </p>
-          <pre className="whitespace-pre-wrap rounded-lg border bg-muted p-4 font-mono text-xs">{TEMP_USE}</pre>
+          <CodeBlock label="usos-temperature.txt" code={TEMP_USE} />
           <p>
             En esta web es un parámetro real: <Badge variant="outline">temperature: 0</Badge> en
             <code> server/llm.ts → chatCompletion()</code> — usado por agente, RAG y orquestador, porque

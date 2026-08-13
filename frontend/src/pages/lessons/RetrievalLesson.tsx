@@ -1,5 +1,4 @@
 import { useState } from "react"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -7,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { LessonShell } from "@/components/LessonShell"
 import { NumberPopIn } from "@/components/NumberPopIn"
+import { AIErrorCard } from "@/components/AIErrorCard"
 
 const SERVER_CODE = `// server/rag.ts — lo que corre en tu backend (#25, #28)
 function search(queryVec: number[], k = 4): Doc[] {
@@ -89,7 +89,10 @@ export function RetrievalLesson() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question, user, config }),
       })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      if (!res.ok) {
+        const body = await res.json().catch(() => null)
+        throw new Error(body?.error ?? `HTTP ${res.status}`)
+      }
       setHits((await res.json()).hits)
     } catch (err) {
       setError((err as Error).message)
@@ -113,7 +116,10 @@ export function RetrievalLesson() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question, user, config }),
       })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      if (!res.ok) {
+        const body = await res.json().catch(() => null)
+        throw new Error(body?.error ?? `HTTP ${res.status}`)
+      }
       setRerank(await res.json())
     } catch (err) {
       setError((err as Error).message)
@@ -195,12 +201,7 @@ export function RetrievalLesson() {
             </Button>
           </div>
 
-          {error && (
-            <Alert variant="destructive">
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription className="break-all">{error}</AlertDescription>
-            </Alert>
-          )}
+          {error && <AIErrorCard error={error} />}
 
           {hits && (
             <div className="flex flex-col gap-2">

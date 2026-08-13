@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { LessonShell } from "@/components/LessonShell"
+import { CodeBlock } from "@/components/CodeBlock"
 import { NumberPopIn } from "@/components/NumberPopIn"
 
 const ORCH_CODE = `// server/orchestrator.ts — sistemas multiagente reales de esta web
@@ -100,7 +101,7 @@ export function MultiagentesLesson() {
             seguridad, UX... cada uno evalúa una dimensión. El <strong>orquestador</strong> decide qué
             ejecutar, con qué contexto, en qué orden, cuándo terminar y cuándo pedir segunda evaluación.
           </p>
-          <pre className="whitespace-pre-wrap rounded-lg border bg-muted p-4 font-mono text-xs">{PROBS}</pre>
+          <CodeBlock label="patrones-multiagente.txt" code={PROBS} />
           <p>
             <strong>Loops (#19)</strong>: nunca confíes solo en el agente. Límites externos: maxIterations,
             maxToolCalls, timeout, tokenBudget, costBudget + detección de acciones repetidas, condiciones de

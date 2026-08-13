@@ -4,7 +4,7 @@ import { sileo } from "sileo"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
-export function CodeBlock({ label, code }: { label: string; code: string }) {
+export function CodeBlock({ label = "", code, className }: { label?: string; code: string; className?: string }) {
   const [copied, setCopied] = useState(false)
   const swapRef = useRef<HTMLSpanElement>(null)
   const busy = useRef(false)
@@ -58,7 +58,7 @@ export function CodeBlock({ label, code }: { label: string; code: string }) {
   }
 
   return (
-    <div className="relative rounded-[22px] bg-card ring-1 ring-foreground/10">
+    <div className={cn("relative rounded-[22px] bg-card ring-1 ring-foreground/10 flex flex-col", className)}>
       <p className="absolute top-[18px] left-8 font-mono text-xs text-muted-foreground">{label}</p>
       <Button
         variant="ghost"
@@ -74,7 +74,7 @@ export function CodeBlock({ label, code }: { label: string; code: string }) {
           {copied ? <RiCheckLine className="size-4 text-primary" /> : <RiFileCopyLine className="size-4" />}
         </span>
       </Button>
-      <pre className="max-h-96 overflow-auto p-6 pt-[60px] font-mono text-sm leading-[1.7] whitespace-pre text-foreground/80 md:p-8 md:pt-[64px]">
+      <pre className="max-h-96 overflow-auto p-6 pt-[60px] font-mono text-xs leading-[1.7] whitespace-pre text-foreground/80 md:p-8 md:pt-[64px] flex-1">
         {code}
       </pre>
     </div>

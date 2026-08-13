@@ -35,6 +35,14 @@ app.use((req, res, next) => {
   next();
 });
 
+function sendError(res: express.Response, err: any) {
+  const status = typeof err?.status === "number" && err.status >= 400 && err.status < 600 ? err.status : 500;
+  const message = err?.message || "Error desconocido en el servidor";
+  const code = err?.code || "INTERNAL_ERROR";
+  console.error(`API Error [${status}] [${code}]:`, message);
+  res.status(status).json({ error: message, code, details: err?.originalMessage || undefined });
+}
+
 app.get("/api/health", (_req, res) => res.json({ ok: true, docs: store.length }));
 
 // ── Vector Database Inspector & Explorer (doc #25) ──
@@ -58,7 +66,7 @@ app.post("/api/rag/reset-store", async (_req, res) => {
     await seedDocs();
     res.json({ ok: true, totalDocs: store.length });
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    sendError(res, err);
   }
 });
 
@@ -133,7 +141,7 @@ app.post("/api/rag/semantic-cache", async (req, res) => {
       tokensSaved: isHit ? 240 : 0,
     });
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    sendError(res, err);
   }
 });
 
@@ -145,7 +153,7 @@ app.post("/api/agent", async (req, res) => {
     const result = await runAgent(question, user, config?.apiKey, config?.provider);
     res.json(result);
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    sendError(res, err);
   }
 });
 
@@ -158,7 +166,7 @@ app.post("/api/rag/index", async (req, res) => {
     const chunks = await indexDocument(id, text, owner, config?.apiKey, config?.provider);
     res.json({ id, chunks, totalDocs: store.length });
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    sendError(res, err);
   }
 });
 
@@ -182,7 +190,7 @@ app.post("/api/rag/index-file", upload.array("files", 10), async (req, res) => {
     }
     res.json({ files: results, totalDocs: store.length });
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    sendError(res, err);
   }
 });
 
@@ -203,7 +211,7 @@ app.post("/api/rag/ask", async (req, res) => {
     });
     res.json(result);
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    sendError(res, err);
   }
 });
 
@@ -214,7 +222,7 @@ app.post("/api/orchestrate", async (req, res) => {
     if (!question) return res.status(400).json({ error: "question requerido" });
     res.json(await orchestrate(question, config?.apiKey, config?.provider));
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    sendError(res, err);
   }
 });
 
@@ -228,7 +236,7 @@ app.post("/api/demo/embed", async (req, res) => {
     const [v] = await embed([text], config?.apiKey, config?.provider);
     res.json({ dims: v.length, sample: v.slice(0, 8) });
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    sendError(res, err);
   }
 });
 
@@ -240,7 +248,7 @@ app.post("/api/demo/cosine", async (req, res) => {
     const [va, vb] = await embed([a, b], config?.apiKey, config?.provider);
     res.json({ a, b, cosine: Number(cosine(va, vb).toFixed(4)) });
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    sendError(res, err);
   }
 });
 
@@ -275,7 +283,7 @@ app.post("/api/demo/retrieve", async (req, res) => {
       hits,
     });
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    sendError(res, err);
   }
 });
 
@@ -305,7 +313,7 @@ app.post("/api/demo/rerank", async (req, res) => {
     });
     res.json({ question, raw: raw.map(shape), reranked: reranked.map(shape) });
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    sendError(res, err);
   }
 });
 
@@ -350,7 +358,7 @@ app.post("/api/demo/eval-retrieval", async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    sendError(res, err);
   }
 });
 
@@ -397,7 +405,7 @@ app.post("/api/demo/injection", async (req, res) => {
       guarded: guarded.choices[0]?.message.content ?? "",
     });
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    sendError(res, err);
   }
 });
 
@@ -462,6 +470,6 @@ app.post("/api/demo/hitl", async (req, res) => {
 
     res.status(400).json({ error: "acción inválida: prepare | decide(id, approve|reject)" });
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    sendError(res, err);
   }
 });

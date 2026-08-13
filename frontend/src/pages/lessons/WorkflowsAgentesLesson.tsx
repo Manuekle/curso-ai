@@ -1,4 +1,5 @@
 import { LessonShell } from "@/components/LessonShell"
+import { CodeBlock } from "@/components/CodeBlock"
 
 const CMP = `| Característica | Workflow | Agente |
 | Pasos | Definidos | Dinámicos |
@@ -23,11 +24,11 @@ export function WorkflowsAgentesLesson() {
             Un <strong>workflow</strong> es una secuencia de pasos definida: determinista, predecible, fácil
             de auditar. Formulario → validar → guardar → llamar API → enviar correo.
           </p>
-          <pre className="whitespace-pre-wrap rounded-lg border bg-muted p-4 font-mono text-xs">{CMP}</pre>
+          <CodeBlock label="workflows-vs-agentes.txt" code={CMP} />
           <p>
             <strong>Cuándo NO usar IA (#10)</strong>:
           </p>
-          <pre className="whitespace-pre-wrap rounded-lg border bg-muted p-4 font-mono text-xs">{NO_IA}</pre>
+          <CodeBlock label="cuando-no-usar-ia.txt" code={NO_IA} />
           <p>
             <strong>Cuándo sí (#11)</strong>: lenguaje natural, documentos no estructurados, clasificación,
             resumen, extracción, razonamiento, decisiones con contexto.

@@ -1,4 +1,5 @@
 import { LessonShell } from "@/components/LessonShell"
+import { CodeBlock } from "@/components/CodeBlock"
 
 const LLM_CODE = `// server/llm.ts — desacople de proveedor real de esta web (#XXI.6)
 export function provider(): Provider {
@@ -48,7 +49,7 @@ export function ArquitecturaLesson() {
             primero: ¿tiene API, DB, archivos, web services, middleware? Un adaptador que normalice a JSON
             (ej. CSV cada hora → parse → validar → guardar) es código tradicional, no IA.
           </p>
-          <pre className="whitespace-pre-wrap rounded-lg border bg-muted p-4 font-mono text-xs">{GWS}</pre>
+          <CodeBlock label="gws-mcp-herramientas.txt" code={GWS} />
         </>
       }
       code={{ label: "Desacople de proveedor real (server/llm.ts)", code: LLM_CODE }}

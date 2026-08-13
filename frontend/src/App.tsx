@@ -3,6 +3,7 @@ import { BrowserRouter, NavLink, Route, Routes, useLocation, useNavigate } from 
 import {
   RiCloseLine,
   RiGithubFill,
+  RiKey2Line,
   RiMenuLine,
   RiMoonLine,
   RiSearchLine,
@@ -12,6 +13,7 @@ import { Toaster } from "sileo"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useTheme } from "@/components/theme-provider"
+import { ApiKeysModal } from "@/components/ApiKeysModal"
 import { Playground } from "@/pages/Playground"
 import { DocsPage } from "@/pages/DocsPage"
 import { AgentCreator } from "@/pages/AgentCreator"
@@ -358,7 +360,7 @@ function Header({ onMenu, onSearch }: HeaderProps) {
           <button
             type="button"
             onClick={onSearch}
-            className="hidden h-9 w-56 cursor-pointer items-center gap-2 rounded-full bg-muted px-3 text-muted-foreground transition-colors duration-150 hover:bg-secondary sm:flex"
+            className="hidden h-9 w-48 cursor-pointer items-center gap-2 rounded-full bg-muted px-3 text-muted-foreground transition-colors duration-150 hover:bg-secondary sm:flex"
             aria-label="Buscar"
           >
             <RiSearchLine className="size-4 shrink-0" />
@@ -443,6 +445,7 @@ function AppRoutes() {
 function AppShell() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
+  const [keysOpen, setKeysOpen] = useState(false)
   const location = useLocation()
 
   useEffect(() => {
@@ -450,12 +453,12 @@ function AppShell() {
   }, [location.pathname])
 
   useEffect(() => {
-    const lock = drawerOpen || searchOpen
+    const lock = drawerOpen || searchOpen || keysOpen
     document.body.style.overflow = lock ? "hidden" : ""
     return () => {
       document.body.style.overflow = ""
     }
-  }, [drawerOpen, searchOpen])
+  }, [drawerOpen, searchOpen, keysOpen])
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -466,15 +469,24 @@ function AppShell() {
       if (event.key === "Escape") {
         setSearchOpen(false)
         setDrawerOpen(false)
+        setKeysOpen(false)
       }
     }
+    const handleOpenKeys = () => setKeysOpen(true)
+    window.addEventListener("open-api-keys-modal", handleOpenKeys)
     window.addEventListener("keydown", onKeyDown)
-    return () => window.removeEventListener("keydown", onKeyDown)
+    return () => {
+      window.removeEventListener("open-api-keys-modal", handleOpenKeys)
+      window.removeEventListener("keydown", onKeyDown)
+    }
   }, [])
 
   return (
     <div className="flex min-h-svh flex-col bg-background">
-      <Header onMenu={() => setDrawerOpen(true)} onSearch={() => setSearchOpen(true)} />
+      <Header
+        onMenu={() => setDrawerOpen(true)}
+        onSearch={() => setSearchOpen(true)}
+      />
 
       <div className="mx-auto flex w-full max-w-[1560px] flex-1 flex-col md:flex-row md:gap-10 md:px-16">
         <aside className="hidden shrink-0 md:block md:sticky md:top-0 md:h-svh md:w-[220px] md:self-start md:overflow-y-auto md:py-14">
@@ -539,21 +551,63 @@ function AppShell() {
                 ⌘K
               </kbd>
             </button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setDrawerOpen(false)
+                setKeysOpen(true)
+              }}
+              className="flex h-12 w-full items-center justify-start gap-3 rounded-xl px-4 text-sm"
+            >
+              <RiKey2Line className="size-5 text-primary shrink-0" />
+              <span>Configurar API Keys (.env)</span>
+            </Button>
             <NavLists />
           </div>
         </div>
       )}
 
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
+      <ApiKeysModal open={keysOpen} onClose={() => setKeysOpen(false)} />
     </div>
   )
 }
 
 export function App() {
+  const { theme } = useTheme()
+  const [isSystemDark, setIsSystemDark] = useState(() =>
+    typeof window !== "undefined"
+      ? window.matchMedia("(prefers-color-scheme: dark)").matches
+      : false
+  )
+
+  useEffect(() => {
+    if (theme !== "system") return
+
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)")
+    const handleChange = (e: MediaQueryListEvent) => {
+      setIsSystemDark(e.matches)
+    }
+
+    mediaQuery.addEventListener("change", handleChange)
+    return () => mediaQuery.removeEventListener("change", handleChange)
+  }, [theme])
+
+  const resolvedTheme =
+    theme === "system" ? (isSystemDark ? "dark" : "light") : theme
+
+  // Sileo's theme property is inverted by design:
+  // "dark" theme in Sileo = light/white background toast
+  // "light" theme in Sileo = dark/black background toast
+  // Light mode -> White toast ("dark" Sileo theme)
+  // Dark mode -> Black toast ("light" Sileo theme)
+  const sileoTheme = resolvedTheme === "dark" ? "light" : "dark"
+
   return (
     <BrowserRouter>
       <AppShell />
-      <Toaster position="bottom-right" />
+      <Toaster position="bottom-right" theme={sileoTheme} />
     </BrowserRouter>
   )
 }

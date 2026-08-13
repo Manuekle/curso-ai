@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { LessonShell } from "@/components/LessonShell"
+import { CodeBlock } from "@/components/CodeBlock"
 
 const AUTHZ = `Authentication   → "¿Quién sos?"      (login, OAuth, session, JWT)
 Authorization    → "¿Qué podés hacer?" (Admin → elimina, Employee → lee)
@@ -80,7 +81,7 @@ export function SeguridadLesson() {
       tag="doc.md #29-35 · “Amenazas específicas de LLM” · server/app.ts"
       intro={
         <>
-          <pre className="whitespace-pre-wrap rounded-lg border bg-muted p-4 font-mono text-xs">{AUTHZ}</pre>
+          <CodeBlock label="autenticacion-autorizacion.txt" code={AUTHZ} />
           <p>
             <strong>Datos sensibles (#34)</strong>: si procesás finanzas, personales, contratos o clientes,
             evaluá: qué datos salen de la empresa, qué proveedor los recibe, retención, cifrado en tránsito

@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { LessonShell } from "@/components/LessonShell"
+import { CodeBlock } from "@/components/CodeBlock"
 import { Accordion } from "@/components/Accordion"
 
 const CORTAS = `Agente     → sistema orientado a objetivos que decide y usa herramientas.
@@ -48,9 +49,7 @@ export function EntrevistaLesson() {
                 </span>
               }
             >
-              <pre className="whitespace-pre-wrap rounded-lg border bg-muted/50 p-4 font-mono text-xs leading-relaxed text-foreground">
-                {CORTAS}
-              </pre>
+              <CodeBlock label="respuestas-cortas.txt" code={CORTAS} />
             </Accordion>
 
             <Accordion
@@ -61,9 +60,7 @@ export function EntrevistaLesson() {
                 </span>
               }
             >
-              <pre className="whitespace-pre-wrap rounded-lg border bg-muted/50 p-4 font-mono text-xs leading-relaxed text-foreground">
-                {QUINCE}
-              </pre>
+              <CodeBlock label="15-ideas-clave.txt" code={QUINCE} />
             </Accordion>
           </div>
           <p className="pt-2">

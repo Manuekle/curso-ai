@@ -2,6 +2,7 @@ import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { LessonShell } from "@/components/LessonShell"
+import { CodeBlock } from "@/components/CodeBlock"
 import { LiquidSlider } from "@/components/LiquidSlider"
 import { NumberPopIn } from "@/components/NumberPopIn"
 
@@ -102,14 +103,9 @@ export function ChunksLesson() {
           <p className="text-xs text-muted-foreground">
             <NumberPopIn value={text.length} /> chars → <NumberPopIn value={chunks.length} /> chunks
           </p>
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-3">
             {chunks.map((c, i) => (
-              <pre
-                key={i}
-                className="whitespace-pre-wrap rounded-lg border bg-muted p-3 font-mono text-xs"
-              >
-                [{i}] ({c.length} chars) {c}
-              </pre>
+              <CodeBlock key={i} label={`chunk-${i}.txt (${c.length} chars)`} code={c} />
             ))}
           </div>
         </CardContent>

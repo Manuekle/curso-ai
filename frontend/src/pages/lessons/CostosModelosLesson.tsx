@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { LessonShell } from "@/components/LessonShell"
+import { CodeBlock } from "@/components/CodeBlock"
 import { NumberPopIn } from "@/components/NumberPopIn"
 
 const COSTO = `Costo =
@@ -79,13 +80,13 @@ export function CostosModelosLesson() {
       tag="doc.md #55-60 · server/llm.ts"
       intro={
         <>
-          <pre className="whitespace-pre-wrap rounded-lg border bg-muted p-4 font-mono text-xs">{COSTO}</pre>
+          <CodeBlock label="calculo-costo.txt" code={COSTO} />
           <p>
             Ejemplo real de esta web: 5 agentes × 5 llamadas = 25 llamadas/workflow × 10.000 workflows/día =
             250.000 llamadas. Antes de optimizar preguntá: <em>¿por qué 25?</em>. Eliminá redundancias,
             paralelizá, cacheá.
           </p>
-          <pre className="whitespace-pre-wrap rounded-lg border bg-muted p-4 font-mono text-xs">{ROUTING}</pre>
+          <CodeBlock label="model-routing.txt" code={ROUTING} />
           <p>
             <strong>Elección (#59-60)</strong>: nunca respondas &quot;X es el mejor&quot;. Definí requisitos y
             hacé benchmark con tus casos reales (extracción, razonamiento, resumen, clasificación, tool

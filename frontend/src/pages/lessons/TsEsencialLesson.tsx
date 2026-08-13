@@ -1,4 +1,5 @@
 import { LessonShell } from "@/components/LessonShell"
+import { CodeBlock } from "@/components/CodeBlock"
 
 const FETCH_CODE = `// frontend/src/pages/Playground.tsx — consumir la API real (#71-72)
 async function send() {
@@ -58,19 +59,9 @@ export function TsEsencialLesson() {
       prev={{ to: "/aprender/ejercicios", label: "Ejercicios" }}
       next={{ to: "/aprender/entrevista", label: "Entrevista" }}
     >
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-2">
-          <p className="font-mono text-xs text-muted-foreground">Paralelismo real (#75)</p>
-          <pre className="max-h-96 overflow-auto whitespace-pre rounded-lg border bg-muted p-4 font-mono text-xs leading-relaxed">
-            {PARALLEL_CODE}
-          </pre>
-        </div>
-        <div className="flex flex-col gap-2">
-          <p className="font-mono text-xs text-muted-foreground">Transformación (#73)</p>
-          <pre className="max-h-96 overflow-auto whitespace-pre rounded-lg border bg-muted p-4 font-mono text-xs leading-relaxed">
-            {TRANSFORM_CODE}
-          </pre>
-        </div>
+      <div className="flex flex-col gap-6">
+        <CodeBlock label="parallel-embeddings.ts (#75)" code={PARALLEL_CODE} />
+        <CodeBlock label="transform.ts (#73)" code={TRANSFORM_CODE} />
       </div>
     </LessonShell>
   )

@@ -174,7 +174,7 @@ function inline(text: string, keyBase: number): ReactNode {
         }
         if (part.startsWith("`") && part.endsWith("`")) {
           return (
-            <code key={`${keyBase}-${i}`} className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-[13px]">
+            <code key={`${keyBase}-${i}`} className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-xs">
               {part.slice(1, -1)}
             </code>
           )

@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { LessonShell } from "@/components/LessonShell"
+import { CodeBlock } from "@/components/CodeBlock"
 import { NumberPopIn } from "@/components/NumberPopIn"
 
 const GOLDEN = `// golden dataset (#62): casos con respuesta esperada
@@ -82,13 +83,13 @@ export function EvaluacionLesson() {
       tag="doc.md #61-63 · “Métricas de retrieval (RAG)” · server/app.ts"
       intro={
         <>
-          <pre className="whitespace-pre-wrap rounded-lg border bg-muted p-4 font-mono text-xs">{METRICAS}</pre>
+          <CodeBlock label="metricas-evaluacion.txt" code={METRICAS} />
           <p>
             Armá un <strong>golden dataset</strong> con los casos que importan: la web ya tiene los inputs
             para construirlo (playground + demos).
           </p>
-          <pre className="whitespace-pre-wrap rounded-lg border bg-muted p-4 font-mono text-xs">{GOLDEN}</pre>
-          <pre className="whitespace-pre-wrap rounded-lg border bg-muted p-4 font-mono text-xs">{METRICAS_RETRIEVAL}</pre>
+          <CodeBlock label="golden-dataset.json" code={GOLDEN} />
+          <CodeBlock label="metricas-retrieval.txt" code={METRICAS_RETRIEVAL} />
           <p>
             <strong>Regression testing (#63)</strong>: cambiás un prompt → 95% correcto → 87%. Si no lo
             detectás antes de producción, te enterás con usuarios reales.

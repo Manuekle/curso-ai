@@ -1,4 +1,5 @@
 import { LessonShell } from "@/components/LessonShell"
+import { CodeBlock } from "@/components/CodeBlock"
 
 const MITIGACION = `RAG
 + Fuentes confiables
@@ -27,7 +28,7 @@ export function AlucinacionesLesson() {
           <p>
             No hay solución única — combinación:
           </p>
-          <pre className="whitespace-pre-wrap rounded-lg border bg-muted p-4 font-mono text-xs">{MITIGACION}</pre>
+          <CodeBlock label="mitigacion.txt" code={MITIGACION} />
           <p>
             La respuesta correcta para la entrevista (#27): <em>&quot;RAG reduce el riesgo de alucinaciones al
             proporcionar información externa relevante, pero necesito validación, fuentes confiables y

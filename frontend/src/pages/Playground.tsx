@@ -8,6 +8,7 @@ import {
   RiFileLine,
   RiFilter3Line,
   RiFlashlightLine,
+  RiKey2Line,
   RiLoader4Line,
   RiRefreshLine,
   RiSearchLine,
@@ -16,21 +17,22 @@ import {
   RiTimeLine,
   RiUploadCloud2Line,
 } from "@remixicon/react"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { SlidingTabs } from "@/components/SlidingTabs"
 import { Textarea } from "@/components/ui/textarea"
 import { LiquidSlider } from "@/components/LiquidSlider"
 import { NumberPopIn } from "@/components/NumberPopIn"
+import { useApiKeys, openApiKeysModal, type Provider } from "@/hooks/useApiKeys"
+import { AIErrorCard } from "@/components/AIErrorCard"
+import { sileo } from "sileo"
+import { cn } from "@/lib/utils"
 
 type Mode = "rag" | "vectordb" | "agent" | "orchestrate"
-type Provider = "openai" | "gemini" | "groq" | "openrouter"
 
 type UploadItem = {
   file: File
@@ -165,10 +167,7 @@ export function Playground() {
   const [latencyMs, setLatencyMs] = useState<number>(0)
   const [vectorDims, setVectorDims] = useState<number>(1536)
 
-  const [provider, setProvider] = useState<Provider>(() => (localStorage.getItem("active-provider") as Provider) || "openrouter")
-  const [apiKeys, setApiKeys] = useState<Record<Provider, string>>(() =>
-    JSON.parse(localStorage.getItem("api-keys") || '{"openai":"","gemini":"","groq":"","openrouter":""}')
-  )
+  const { apiKeys, activeProvider: provider, setActiveProvider: setProvider, configuredCount } = useApiKeys()
 
   useEffect(() => {
     const activeAgent = localStorage.getItem("active-agent")
@@ -182,7 +181,7 @@ export function Playground() {
       }
       localStorage.removeItem("active-agent")
     }
-  }, [])
+  }, [setProvider])
 
   const [docText, setDocText] = useState("")
   const [docOwner, setDocOwner] = useState("demo")
@@ -191,11 +190,6 @@ export function Playground() {
   const [uploads, setUploads] = useState<UploadItem[]>([])
   const [dragging, setDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    localStorage.setItem("active-provider", provider)
-    localStorage.setItem("api-keys", JSON.stringify(apiKeys))
-  }, [provider, apiKeys])
 
   // Cargar chunks de la Vector DB
   const loadVectorStore = async () => {
@@ -257,11 +251,19 @@ export function Playground() {
           config: { provider, apiKey: apiKeys[provider] },
         }),
       })
-      if (!res.ok) throw new Error("Error en búsqueda híbrida")
+      if (!res.ok) {
+        const body = await res.json().catch(() => null)
+        throw new Error(body?.error ?? "Error en búsqueda híbrida")
+      }
       const data = await res.json()
       setHybridResults(data)
     } catch (err) {
-      setError((err as Error).message)
+      const msg = (err as Error).message
+      setError(msg)
+      sileo.error({
+        title: "Error en búsqueda híbrida",
+        description: msg.length > 75 ? msg.slice(0, 72) + "..." : msg,
+      })
     } finally {
       setLoading(false)
     }
@@ -280,11 +282,19 @@ export function Playground() {
           config: { provider, apiKey: apiKeys[provider] },
         }),
       })
-      if (!res.ok) throw new Error("Error evaluando semantic cache")
+      if (!res.ok) {
+        const body = await res.json().catch(() => null)
+        throw new Error(body?.error ?? "Error evaluando semantic cache")
+      }
       const data = await res.json()
       setCacheResult(data)
     } catch (err) {
-      setError((err as Error).message)
+      const msg = (err as Error).message
+      setError(msg)
+      sileo.error({
+        title: "Error en semantic cache",
+        description: msg.length > 75 ? msg.slice(0, 72) + "..." : msg,
+      })
     } finally {
       setLoading(false)
     }
@@ -316,7 +326,7 @@ export function Playground() {
 
       if (!res.ok) {
         const body = await res.json().catch(() => null)
-        throw new Error(`HTTP ${res.status}: ${body?.error ?? res.statusText}`)
+        throw new Error(body?.error ?? `HTTP ${res.status}: ${res.statusText}`)
       }
 
       const data = await res.json()
@@ -345,7 +355,12 @@ export function Playground() {
         setMeta(`top-${data.hits?.length ?? 0} candidatos recuperados de la base vectorial`)
       }
     } catch (err) {
-      setError((err as Error).message)
+      const msg = (err as Error).message
+      setError(msg)
+      sileo.error({
+        title: "Error en la consulta",
+        description: msg.length > 75 ? msg.slice(0, 72) + "..." : msg,
+      })
     } finally {
       setLoading(false)
     }
@@ -460,28 +475,53 @@ export function Playground() {
       </CardHeader>
 
       <CardContent className="flex flex-col gap-5 px-6 sm:px-8">
-        {/* Proveedor y API Key */}
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-          <div className="sm:col-span-1">
-            <Select value={provider} onValueChange={(v) => setProvider(v as Provider)}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Proveedor" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="openrouter">OpenRouter (Recomendado)</SelectItem>
-                <SelectItem value="openai">OpenAI</SelectItem>
-                <SelectItem value="gemini">Gemini</SelectItem>
-                <SelectItem value="groq">Groq</SelectItem>
-              </SelectContent>
-            </Select>
+        {/* Proveedor y Gestor de API Keys (.env local) */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 rounded-xl border border-border/70 bg-card p-3 shadow-2xs">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium text-muted-foreground ml-0.5">Proveedor:</span>
+            <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-full shadow-xs">
+              {(["openrouter", "openai", "gemini", "groq"] as Provider[]).map((p) => {
+                const hasKey = Boolean(apiKeys[p]?.trim())
+                const isSelected = provider === p
+                return (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setProvider(p)}
+                    className={cn(
+                      "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-all cursor-pointer",
+                      isSelected
+                        ? "bg-background text-foreground shadow-xs"
+                        : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "size-2 rounded-full shrink-0",
+                        hasKey ? "bg-emerald-500" : "bg-muted-foreground/40"
+                      )}
+                    />
+                    <span className="capitalize">{p}</span>
+                  </button>
+                )
+              })}
+            </div>
           </div>
-          <div className="sm:col-span-2">
-            <Input
-              type="password"
-              value={apiKeys[provider]}
-              onChange={(e) => setApiKeys((prev) => ({ ...prev, [provider]: e.target.value }))}
-              placeholder={`API Key para ${provider} (opcional si está en .env)`}
-            />
+
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={openApiKeysModal}
+              className="h-8 text-xs gap-1.5 rounded-full border-border/80 hover:bg-secondary/70 transition-colors cursor-pointer"
+            >
+              <RiKey2Line className="size-3.5 text-primary" />
+              <span>Configurar API Keys (.env)</span>
+              <span className="rounded-full bg-muted px-1.5 py-0.2 text-[10px] font-mono text-muted-foreground">
+                {configuredCount}/4
+              </span>
+            </Button>
           </div>
         </div>
 
@@ -621,7 +661,19 @@ export function Playground() {
               <div className="flex flex-col gap-3">
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span>Documentos indexados en memoria</span>
-                  <span>Dimensión: {vectorDocs[0]?.vectorDim ?? 1536}d</span>
+                  <div className="flex items-center gap-2">
+                    <span>Dimensión: {vectorDocs[0]?.vectorDim ?? 1536}d</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-[11px] px-2 text-muted-foreground hover:text-foreground"
+                      onClick={resetVectorStore}
+                      title="Reiniciar vectores"
+                    >
+                      <RiRefreshLine className="h-3 w-3 mr-1" />
+                      Reiniciar
+                    </Button>
+                  </div>
                 </div>
                 <div className="max-h-[320px] overflow-y-auto flex flex-col gap-2 pr-1">
                   {vectorDocs.length === 0 ? (
@@ -831,10 +883,12 @@ export function Playground() {
         )}
 
         {error && (
-          <Alert variant="destructive" className="anim-shake">
-            <AlertTitle>Error de Ejecución</AlertTitle>
-            <AlertDescription className="break-all text-xs">{error}</AlertDescription>
-          </Alert>
+          <AIErrorCard
+            error={error}
+            onOpenKeysModal={openApiKeysModal}
+            onRetry={send}
+            className="anim-shake"
+          />
         )}
 
         {/* Panel de resultados y diagnósticos */}

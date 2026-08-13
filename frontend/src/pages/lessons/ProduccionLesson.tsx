@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { LessonShell } from "@/components/LessonShell"
+import { CodeBlock } from "@/components/CodeBlock"
 import { NumberPopIn } from "@/components/NumberPopIn"
 
 const LOG_CODE = `// server/server.ts — observabilidad real de esta web (#48-49)
@@ -104,19 +105,19 @@ export function ProduccionLesson() {
             <strong>Observabilidad (#48)</strong>: respondé &quot;¿qué hizo el sistema?&quot;. Medí latencia,
             errores, tokens, costo, herramientas usadas, tasa de éxito. La web ya lo hace por request:
           </p>
-          <pre className="whitespace-pre-wrap rounded-lg border bg-muted p-4 font-mono text-xs">{LOG_CODE}</pre>
+          <CodeBlock label="request-logging.json" code={LOG_CODE} />
           <p>
             <strong>Tracing (#50)</strong>: seguí una request a través de componentes — crítico en
             multiagentes. <strong>Caching (#51)</strong>: cuidado con expiración, invalidación, datos
             sensibles y cambio. En IA además: exact-match, semantic cache y prompt caching.
           </p>
-          <pre className="whitespace-pre-wrap rounded-lg border bg-muted p-4 font-mono text-xs">{ESCALAR}</pre>
+          <CodeBlock label="escalabilidad-caching.txt" code={ESCALAR} />
           <p>
             <strong>Streaming (#47-54, “Streaming y latencia”)</strong>: el LLM genera por fragmentos (SSE).
             El usuario ve el primer token rápido (TTFT) aunque la respuesta total tarde. Sin streaming, la UI
             queda bloqueada minutos. Abajo lo simulás.
           </p>
-          <pre className="whitespace-pre-wrap rounded-lg border bg-muted p-4 font-mono text-xs">{LLM_ERRORS}</pre>
+          <CodeBlock label="errores-resiliencia.txt" code={LLM_ERRORS} />
         </>
       }
       code={{
@@ -158,7 +159,7 @@ export function ProduccionLesson() {
               <Badge variant="default">cache hit: 0ms, sin llamada LLM (#51)</Badge>
             )}
           </div>
-          <p className="min-h-24 rounded-lg border bg-muted p-3 font-mono text-sm leading-relaxed">
+          <p className="min-h-24 rounded-lg border bg-muted p-3 font-mono text-xs leading-relaxed">
             {shown || <span className="text-muted-foreground">La respuesta aparece token a token, como con SSE…</span>}
           </p>
           <p className="text-xs text-muted-foreground">

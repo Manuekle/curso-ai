@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { LessonShell } from "@/components/LessonShell"
+import { CodeBlock } from "@/components/CodeBlock"
 
 const WEAK = `Analiza este documento.`
 
@@ -49,11 +50,7 @@ export function PromptsStructuredLesson() {
             Un prompt bien armado contiene: <strong>rol, objetivo, contexto, restricciones, datos, formato
             de salida, ejemplos</strong>. Compará:
           </p>
-          <pre className="whitespace-pre-wrap rounded-lg border bg-muted p-4 font-mono text-xs">
-            Débil:   {WEAK}
-            {"\n\n"}Estructurado:
-            {STRONG}
-          </pre>
+          <CodeBlock label="prompt-comparativa.txt" code={`Débil:   ${WEAK}\n\nEstructurado:\n${STRONG}`} />
           <p>
             <strong>Structured output</strong>: cuando la app consume la respuesta automáticamente, pedí
             estructura (JSON). Facilita validación, persistencia, integraciones y consistencia. En esta web
@@ -63,7 +60,7 @@ export function PromptsStructuredLesson() {
             <strong>Crítico:</strong> el prompt <em>no es seguridad</em>. Establece comportamiento, pero la
             seguridad vive en auth → authorization → backend → APIs → data access.
           </p>
-          <pre className="whitespace-pre-wrap rounded-lg border bg-muted p-4 font-mono text-xs">{SEC}</pre>
+          <CodeBlock label="seguridad-fronteras.txt" code={SEC} />
         </>
       }
       code={{

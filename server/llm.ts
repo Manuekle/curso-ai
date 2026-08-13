@@ -126,6 +126,74 @@ export function generateLocalEmbedding(text: string, dim = 1536): number[] {
   return result;
 }
 
+// Normalizador de errores de LLM para mensajes claros y descriptivos
+export function normalizeLLMError(error: any, provider: Provider): { message: string; code: string; status: number } {
+  const rawMsg = error?.message || String(error || "");
+  const lower = rawMsg.toLowerCase();
+  const rawStatus = error?.status || error?.statusCode || error?.response?.status;
+
+  // 1. Quota / Tokens agotados / Rate limit
+  if (
+    lower.includes("quota") ||
+    lower.includes("429") ||
+    lower.includes("402") ||
+    lower.includes("insufficient") ||
+    lower.includes("credit") ||
+    lower.includes("balance") ||
+    lower.includes("resource_exhausted") ||
+    lower.includes("rate limit") ||
+    lower.includes("token")
+  ) {
+    return {
+      message: `Has alcanzado el límite de tokens o cuota para ${provider.toUpperCase()}. Por favor verifica tus créditos en el proveedor o selecciona otro modelo/proveedor en el Gestor de API Keys.`,
+      code: "QUOTA_EXCEEDED",
+      status: 429,
+    };
+  }
+
+  // 2. Clave de API faltante o inválida
+  if (
+    lower.includes("api key") ||
+    lower.includes("apikey") ||
+    lower.includes("401") ||
+    lower.includes("403") ||
+    lower.includes("unauthorized") ||
+    lower.includes("invalid key") ||
+    lower.includes("sin clave") ||
+    lower.includes("authentication")
+  ) {
+    return {
+      message: `La API Key para ${provider.toUpperCase()} no es válida o no ha sido configurada. Ingresa tu clave en el Gestor de API Keys (.env local).`,
+      code: "INVALID_API_KEY",
+      status: 401,
+    };
+  }
+
+  // 3. Fallo de red / Timeout / Servicio no disponible
+  if (
+    lower.includes("fetch failed") ||
+    lower.includes("econnrefused") ||
+    lower.includes("timeout") ||
+    lower.includes("network") ||
+    lower.includes("503") ||
+    lower.includes("502") ||
+    lower.includes("enotfound") ||
+    lower.includes("overloaded")
+  ) {
+    return {
+      message: `No se pudo establecer conexión con los servidores de ${provider.toUpperCase()}. Comprueba tu conexión a internet o intenta nuevamente en unos instantes.`,
+      code: "SERVICE_UNAVAILABLE",
+      status: 503,
+    };
+  }
+
+  return {
+    message: `Error al consultar ${provider.toUpperCase()}: ${rawMsg}`,
+    code: "LLM_ERROR",
+    status: typeof rawStatus === "number" && rawStatus >= 400 && rawStatus < 600 ? rawStatus : 500,
+  };
+}
+
 // Wrapper de chat unificado
 export async function chatCompletion(
   config: LLMConfig,
@@ -133,6 +201,11 @@ export async function chatCompletion(
 ): Promise<any> {
   const provider = config.provider || getDefaultProvider();
   const effectiveConfig: LLMConfig = { ...config, provider };
+
+  const key = effectiveConfig.apiKey || process.env[`${provider.toUpperCase()}_API_KEY`] || "";
+  if (!key.trim()) {
+    throw new Error(`La API Key para ${provider.toUpperCase()} no está configurada. Por favor configúrala en el Gestor de API Keys.`);
+  }
 
   try {
     const client = getClient(effectiveConfig);
@@ -168,12 +241,18 @@ export async function chatCompletion(
   } catch (error: any) {
     console.error(`Error in chatCompletion (${provider}):`, error.message);
 
-    // Fallback simulado para entorno local offline o sin API key válida
+    // Si es un error de API, lanzar con mensaje normalizado
+    const norm = normalizeLLMError(error, provider);
+    const enhancedErr = new Error(norm.message);
+    (enhancedErr as any).code = norm.code;
+    (enhancedErr as any).status = norm.status;
+    (enhancedErr as any).originalMessage = error.message;
+
+    // Fallback simulado para entorno local offline si no hay claves de ninguna clase y es RAG o structured
     const lastUser = params?.messages?.find((m: any) => m.role === "user")?.content || "";
     const system = params?.messages?.find((m: any) => m.role === "system")?.content || "";
 
-    // Si es un agente estructurado con response_format json_object
-    if (params?.response_format?.type === "json_object") {
+    if (params?.response_format?.type === "json_object" && error?.message?.includes("offline")) {
       return {
         choices: [
           {
@@ -189,8 +268,7 @@ export async function chatCompletion(
       };
     }
 
-    // Si tiene contexto de RAG
-    if (lastUser.includes("Contexto:")) {
+    if (lastUser.includes("Contexto:") && error?.message?.includes("offline")) {
       const match = lastUser.match(/\[fuente:\s*([^\]]+)\]/);
       const fuente = match ? match[1] : "documento local";
       return {
@@ -205,7 +283,7 @@ export async function chatCompletion(
       };
     }
 
-    throw new Error(`Error de LLM (${provider}): ${error.message}`);
+    throw enhancedErr;
   }
 }
 

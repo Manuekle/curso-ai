@@ -1,4 +1,5 @@
 import { LessonShell } from "@/components/LessonShell"
+import { CodeBlock } from "@/components/CodeBlock"
 
 const HTTP = `GET    → consultar         200 → OK
 POST   → crear             201 → Created
@@ -31,12 +32,12 @@ export function ApisLesson() {
             <strong>REST</strong> es un estilo de arquitectura HTTP común: recursos + métodos +
             status codes.
           </p>
-          <pre className="whitespace-pre-wrap rounded-lg border bg-muted p-4 font-mono text-xs">{HTTP}</pre>
+          <CodeBlock label="metodos-http.txt" code={HTTP} />
           <p>
             <strong>Webhooks (#39)</strong>: el sistema externo avisa por HTTP cuando pasa algo (pago →
             POST /webhook → backend), en vez de que vos consultes.
           </p>
-          <pre className="whitespace-pre-wrap rounded-lg border bg-muted p-4 font-mono text-xs">{RETRY}</pre>
+          <CodeBlock label="retry-idempotencia.txt" code={RETRY} />
         </>
       }
       code={{
