@@ -4,19 +4,28 @@ import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url"
 import * as mammoth from "mammoth"
 import * as XLSX from "xlsx"
 import {
-  RiDeleteBinLine,
+  RiCheckLine,
+  RiCloseLine,
   RiDatabase2Line,
-  RiFileTextLine,
+  RiDeleteBinLine,
+  RiFileLine,
+  RiKey2Line,
   RiLoader4Line,
   RiRobot2Line,
   RiSendPlaneLine,
   RiUploadCloud2Line,
   RiUserLine,
 } from "@remixicon/react"
-import { cn } from "@/lib/utils"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Separator } from "@/components/ui/separator"
+import { NumberPopIn } from "@/components/NumberPopIn"
+import { sileo } from "sileo"
+import { cn } from "@/lib/utils"
 import { AIErrorCard } from "@/components/AIErrorCard"
-import { openApiKeysModal, useApiKeys } from "@/hooks/useApiKeys"
+import { openApiKeysModal, useApiKeys, type Provider } from "@/hooks/useApiKeys"
 import {
   chatCompletion,
   clearStore,
@@ -33,10 +42,24 @@ interface ChatMessage {
   content: string
 }
 
+type UploadState = "pending" | "processing" | "done" | "error"
+
+type UploadItem = {
+  file: File
+  state: UploadState
+  msg?: string
+}
+
 const HISTORY_KEY = "chatbot-history"
-const MAX_CHUNKS = 400
+const ACCEPT = ".md,.txt,.pdf,.docx,.xlsx,.csv"
 
 GlobalWorkerOptions.workerSrc = pdfWorkerUrl
+
+function formatSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
 
 // Extrae texto plano según extensión: pdf / docx / xlsx / csv / md / txt.
 async function extractText(file: File): Promise<{ text: string; name: string }> {
@@ -93,16 +116,16 @@ function saveHistory(messages: ChatMessage[]) {
 }
 
 export function ChatbotPage() {
-  const { apiKeys, activeProvider, hasActiveKey } = useApiKeys()
+  const { apiKeys, activeProvider, setActiveProvider } = useApiKeys()
   const [docs, setDocs] = useState<LocalDoc[]>(() => loadStore())
   const [messages, setMessages] = useState<ChatMessage[]>(() => loadHistory())
   const [question, setQuestion] = useState("")
-  const [busy, setBusy] = useState<"embed" | "chat" | "import" | null>(null)
+  const [busy, setBusy] = useState<"chat" | "import" | null>(null)
   const [mode, setMode] = useState<"provider" | "local">("local")
   const [lastError, setLastError] = useState("")
-  const [status, setStatus] = useState("")
-  const inputRef = useRef<HTMLInputElement>(null)
-  const fileRef = useRef<HTMLInputElement>(null)
+  const [uploads, setUploads] = useState<UploadItem[]>([])
+  const [dragging, setDragging] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -115,51 +138,54 @@ export function ChatbotPage() {
 
   const vectorDim = docs[0]?.vector.length ?? 0
 
-  async function handleFiles(files: FileList | null) {
-    if (!files || files.length === 0) return
-    setBusy("embed")
-    setLastError("")
-    setStatus("")
-    let added = 0
-    let lastMode: "provider" | "local" = "local"
-    const errors: string[] = []
-    for (const file of Array.from(files)) {
+  async function processUploads(items: UploadItem[]) {
+    for (const item of items) {
+      setUploads((prev) => prev.map((u) => (u.file === item.file ? { ...u, state: "processing" } : u)))
       try {
-        const { text, name } = await extractText(file)
-        if (!text.trim()) {
-          errors.push(`${file.name}: sin texto extraído`)
-          continue
-        }
+        const { text, name } = await extractText(item.file)
+        if (!text.trim()) throw new Error("sin texto extraído")
         const res = await indexText(name, text, apiKeys, activeProvider)
-        added += res.chunks
-        lastMode = res.mode
-        if (docs.length + added > MAX_CHUNKS) {
-          setStatus(`Límite de ${MAX_CHUNKS} chunks alcanzado. Borrá docs o importá menos.`)
-          break
-        }
-      } catch (err: any) {
-        errors.push(`${file.name}: ${err?.message ?? err}`)
+        setMode(res.mode)
+        setDocs(loadStore())
+        setUploads((prev) =>
+          prev.map((u) =>
+            u.file === item.file ? { ...u, state: "done", msg: `${res.chunks} chunks` } : u
+          )
+        )
+      } catch (err) {
+        setUploads((prev) =>
+          prev.map((u) => (u.file === item.file ? { ...u, state: "error", msg: (err as Error).message } : u))
+        )
       }
     }
     setDocs(loadStore())
-    setMode(lastMode)
-    const summary = [added > 0 ? `${added} chunks indexados` : "", errors.join(" · ")].filter(Boolean).join(" — ")
-    setStatus(summary)
-    setBusy(null)
-    if (fileRef.current) fileRef.current.value = ""
+  }
+
+  function addFiles(list: FileList | File[]) {
+    const items = Array.from(list).map((file) => ({ file, state: "pending" as const }))
+    setUploads((prev) => [...prev, ...items])
+    void processUploads(items)
+  }
+
+  function removeUpload(file: File) {
+    setUploads((prev) => prev.filter((u) => u.file !== file))
   }
 
   async function handleImportServer() {
     setBusy("import")
     setLastError("")
-    setStatus("")
     try {
       const res = await importFromServer(apiKeys, activeProvider)
       setDocs(loadStore())
       setMode(res.mode)
-      setStatus(res.imported > 0 ? `${res.imported} chunks importados de la base del server` : "El server no tiene docs indexados")
-    } catch (err: any) {
-      setLastError(err?.message ?? String(err))
+      sileo.success({
+        title: "Base importada",
+        description: res.imported > 0 ? `${res.imported} chunks desde el server` : "El server no tiene docs indexados",
+      })
+    } catch (err) {
+      const msg = (err as Error).message
+      setLastError(msg)
+      sileo.error({ title: "Error al importar", description: msg.slice(0, 75) })
     } finally {
       setBusy(null)
     }
@@ -168,12 +194,11 @@ export function ChatbotPage() {
   function handleClear() {
     clearStore()
     setDocs([])
-    setStatus("Store local vaciado")
+    sileo.success({ title: "Store local vaciado", description: "Los vectores en localStorage fueron eliminados" })
   }
 
   function handleClearChat() {
     setMessages([])
-    setStatus("Historial de chat borrado")
   }
 
   async function send() {
@@ -181,7 +206,6 @@ export function ChatbotPage() {
     if (!q || busy) return
     setQuestion("")
     setLastError("")
-    setStatus("")
     const updated = [...messages, { role: "user" as const, content: q }]
     setMessages(updated)
 
@@ -219,186 +243,294 @@ export function ChatbotPage() {
         ]
         try {
           answer = await chatCompletion(apiKeys, activeProvider, ragMessages)
-        } catch (err: any) {
-          setLastError(err?.message ?? String(err))
+        } catch (err) {
+          const msg = (err as Error).message
+          setLastError(msg)
+          sileo.warning({ title: "Modelo de IA no disponible", description: msg.slice(0, 160) })
           const excerpts = passed.map((h) => `[fuente: ${h.id}]\n${(currentDocs.find((d) => d.id === h.id)?.text ?? "").slice(0, 300)}`).join("\n\n---\n\n")
           answer =
-            `[Modo local] El modelo de IA no está disponible (${err?.message ?? "LLM_ERROR"}). ` +
+            `[Modo local] El modelo de IA no está disponible (${msg}). ` +
             `Estos son los documentos recuperados que responden tu consulta:\n\n${excerpts}\n\n` +
             `Configurá una API key válida para obtener respuestas generadas por el modelo.`
         }
       }
       setMessages([...updated, { role: "assistant", content: answer }])
-    } catch (err: any) {
-      setLastError(err?.message ?? String(err))
-      setMessages([...updated, { role: "assistant", content: `Error al procesar la consulta: ${err?.message ?? err}` }])
+    } catch (err) {
+      const msg = (err as Error).message
+      setLastError(msg)
+      sileo.error({ title: "Error en la consulta", description: msg.slice(0, 75) })
+      setMessages([...updated, { role: "assistant", content: `Error al procesar la consulta: ${msg}` }])
     } finally {
       setBusy(null)
     }
   }
 
-  const canChat = docs.length > 0 && !busy
-  const providerLabel = activeProvider.toUpperCase()
-
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold tracking-[-0.02em]">Chatbot Local</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            RAG 100% en el navegador: vectores y chat en localStorage. Sin servidor para el pipeline.
-          </p>
+    <Card className="mx-auto w-full max-w-3xl border-border/80 shadow-sm">
+      <CardHeader className="px-6 pb-4 sm:px-8">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <CardTitle className="text-xl font-medium">Chatbot Local</CardTitle>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="font-mono text-xs font-medium">
+              docs: <NumberPopIn value={docs.length} /> chunks
+            </Badge>
+            {vectorDim > 0 && (
+              <Badge variant="outline" className="font-mono text-xs font-medium">
+                {vectorDim} dims
+              </Badge>
+            )}
+            <Badge
+              variant={mode === "provider" ? "default" : "secondary"}
+              className="font-mono text-xs font-normal"
+            >
+              {mode === "provider" ? "embeddings API" : "embeddings locales"}
+            </Badge>
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-          <span className="rounded-full bg-muted px-2.5 py-1">{docs.length} chunks</span>
-          <span className="rounded-full bg-muted px-2.5 py-1">{vectorDim ? `${vectorDim} dims` : "sin vectores"}</span>
-          <span
+      </CardHeader>
+
+      <CardContent className="flex flex-col gap-5 px-6 sm:px-8">
+        {/* Proveedor y Gestor de API Keys */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium text-muted-foreground ml-0.5">Proveedor:</span>
+            <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-full shadow-xs">
+              {(["openrouter", "openai", "gemini", "groq"] as Provider[]).map((p) => {
+                const hasKey = Boolean(apiKeys[p]?.trim())
+                const isSelected = activeProvider === p
+                return (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setActiveProvider(p)}
+                    className={cn(
+                      "flex h-7 items-center gap-1 rounded-full px-2.5 text-xs font-medium transition-all",
+                      isSelected
+                        ? "bg-background text-foreground shadow-xs"
+                        : hasKey
+                        ? "text-muted-foreground hover:text-foreground"
+                        : "text-muted-foreground/50 hover:text-muted-foreground"
+                    )}
+                  >
+                    {p}
+                    {hasKey && <span className="size-1.5 rounded-full bg-emerald-500" />}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+          <Button variant="outline" size="sm" className="rounded-full" onClick={openApiKeysModal}>
+            <RiKey2Line className="size-3.5" />
+            API Keys (.env)
+          </Button>
+        </div>
+
+        {/* Documentos en localStorage */}
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium">Indexar documentos (localStorage)</h3>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleImportServer} disabled={busy !== null}>
+                {busy === "import" ? <RiLoader4Line className="size-3.5 animate-spin" /> : <RiDatabase2Line className="size-3.5" />}
+                Importar del server
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleClear} disabled={docs.length === 0 || busy !== null}>
+                <RiDeleteBinLine className="size-3.5" />
+                Vaciar
+              </Button>
+            </div>
+          </div>
+
+          {/* Zona de drag & drop (estilo Playground) */}
+          <div
+            role="button"
+            tabIndex={0}
+            aria-label="Seleccionar archivos"
+            onClick={() => fileInputRef.current?.click()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") fileInputRef.current?.click()
+            }}
+            onDragOver={(e) => {
+              e.preventDefault()
+              setDragging(true)
+            }}
+            onDragLeave={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragging(false)
+            }}
+            onDrop={(e) => {
+              e.preventDefault()
+              setDragging(false)
+              addFiles(e.dataTransfer.files)
+            }}
             className={cn(
-              "rounded-full px-2.5 py-1",
-              mode === "provider" ? "bg-emerald-500/10 text-emerald-600" : "bg-amber-500/10 text-amber-600"
+              "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-6 py-6 text-center transition-all outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+              dragging
+                ? "border-ring bg-ring/10 scale-[1.01]"
+                : "border-input bg-input/20 hover:border-ring/60 hover:bg-input/40"
             )}
           >
-            {mode === "provider" ? "embeddings proveedor" : "embeddings locales"}
-          </span>
-          <span className={cn("rounded-full px-2.5 py-1", hasActiveKey ? "bg-muted" : "bg-red-500/10 text-red-600")}>
-            {providerLabel} {hasActiveKey ? "key ok" : "sin key"}
-          </span>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept={ACCEPT}
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files) addFiles(e.target.files)
+                e.target.value = ""
+              }}
+            />
+            <RiUploadCloud2Line className={cn("h-8 w-8", dragging ? "text-ring" : "text-muted-foreground")} />
+            <p className="text-xs font-medium">
+              {dragging ? "Soltá los archivos acá" : "Arrastrá archivos PDF, DOCX, XLSX, CSV, MD, TXT acá"}
+            </p>
+            <p className="text-[11px] text-muted-foreground">o hacé clic para elegir · se guardan en tu navegador (localStorage)</p>
+          </div>
+
+          {uploads.length > 0 && (
+            <ul className="flex flex-col gap-1.5">
+              {uploads.map((u) => (
+                <li key={u.file.name + u.file.size} className="flex items-center gap-2 rounded-xl border border-input bg-input/30 px-3 py-2">
+                  <RiFileLine className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="truncate text-xs" title={u.file.name}>
+                        {u.file.name}
+                      </p>
+                      <p className="shrink-0 text-[11px] text-muted-foreground">{formatSize(u.file.size)}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {u.state === "processing" && (
+                        <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
+                          <div className="h-full w-1/2 animate-pulse rounded-full bg-ring" />
+                        </div>
+                      )}
+                      {u.state === "done" && <p className="text-[11px] text-muted-foreground">{u.msg}</p>}
+                      {u.state === "error" && (
+                        <p className="truncate text-[11px] text-destructive" title={u.msg}>
+                          {u.msg}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  {u.state === "pending" && <span className="text-[11px] text-muted-foreground">En cola</span>}
+                  {u.state === "processing" && <RiLoader4Line className="h-4 w-4 shrink-0 animate-spin text-ring" />}
+                  {u.state === "done" && <RiCheckLine className="h-4 w-4 shrink-0 text-emerald-500" />}
+                  {u.state === "error" && <RiCloseLine className="h-4 w-4 shrink-0 text-destructive" />}
+                  {u.state !== "processing" && (
+                    <button
+                      type="button"
+                      aria-label={`Quitar ${u.file.name}`}
+                      onClick={() => removeUpload(u.file)}
+                      className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                    >
+                      <RiCloseLine className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {docs.length > 0 && (
+            <details className="group rounded-xl border border-input bg-input/20 px-3 py-2">
+              <summary className="cursor-pointer text-xs font-medium text-muted-foreground select-none hover:text-foreground">
+                Ver chunks indexados ({docs.length})
+              </summary>
+              <ul className="mt-2 flex max-h-44 flex-col gap-0.5 overflow-y-auto pr-1">
+                {docs.slice(0, 60).map((d) => (
+                  <li key={d.id} className="flex items-center justify-between gap-2 rounded-md px-2 py-1 text-[11px] hover:bg-muted/60">
+                    <span className="min-w-0 truncate font-mono">{d.id}</span>
+                    <span className="shrink-0 text-muted-foreground">{d.text.length} chars</span>
+                  </li>
+                ))}
+                {docs.length > 60 && <li className="px-2 py-1 text-[11px] text-muted-foreground">… y {docs.length - 60} chunks más</li>}
+              </ul>
+            </details>
+          )}
         </div>
-      </div>
 
-      {!hasActiveKey && (
-        <Button variant="outline" size="sm" className="w-fit rounded-full" onClick={openApiKeysModal}>
-          Configurar API Keys para embeddings y respuestas reales
-        </Button>
-      )}
+        <Separator className="my-2" />
 
-      {/* ── Datos ── */}
-      <section className="rounded-2xl border border-border bg-card p-5">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold tracking-[-0.01em]">Documentos (localStorage)</h2>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="rounded-full" onClick={handleImportServer} disabled={busy !== null}>
-              {busy === "import" ? <RiLoader4Line className="size-4 animate-spin" /> : <RiDatabase2Line className="size-4" />}
-              Importar del server
-            </Button>
-            <Button variant="outline" size="sm" className="rounded-full" onClick={handleClear} disabled={docs.length === 0 || busy !== null}>
-              <RiDeleteBinLine className="size-4" />
-              Vaciar
+        {/* Chat */}
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium">Chat</h3>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClearChat}
+              disabled={messages.length === 0}
+              className="text-muted-foreground hover:text-destructive"
+            >
+              <RiDeleteBinLine className="size-3.5" />
+              Borrar historial
             </Button>
           </div>
-        </div>
 
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={() => fileRef.current?.click()}
-          onKeyDown={(e) => e.key === "Enter" && fileRef.current?.click()}
-          className="mt-4 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-muted/40 px-4 py-8 text-center transition-colors hover:bg-muted/70"
-        >
-          <RiUploadCloud2Line className="size-6 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">
-            Arrastrá o tocá para subir archivos <span className="font-medium text-foreground">.md · .txt · .pdf · .docx · .xlsx · .csv</span>
-          </p>
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".md,.txt,.pdf,.docx,.xlsx,.csv,text/markdown,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            multiple
-            className="hidden"
-            onChange={(e) => handleFiles(e.target.files)}
-          />
-        </div>
-
-        {docs.length > 0 && (
-          <ul className="mt-4 flex max-h-48 flex-col gap-1 overflow-y-auto pr-1">
-            {docs.slice(0, 50).map((d) => (
-              <li key={d.id} className="flex items-center justify-between gap-2 rounded-lg bg-muted/50 px-3 py-1.5 text-xs">
-                <span className="flex min-w-0 items-center gap-1.5">
-                  <RiFileTextLine className="size-3.5 shrink-0 text-muted-foreground" />
-                  <span className="truncate font-mono">{d.id}</span>
-                </span>
-                <span className="shrink-0 text-muted-foreground">{d.text.length} chars</span>
-              </li>
-            ))}
-            {docs.length > 50 && (
-              <li className="px-3 py-1 text-xs text-muted-foreground">… y {docs.length - 50} chunks más</li>
+          <div className="flex min-h-[320px] flex-col gap-3 rounded-2xl border border-border/80 bg-card p-4">
+            {messages.length === 0 && (
+              <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
+                <RiRobot2Line className="h-8 w-8 text-muted-foreground/60" />
+                <p className="text-xs text-muted-foreground">
+                  Preguntame sobre tus documentos. Ej: "¿qué dice sobre embeddings?"
+                </p>
+              </div>
             )}
-          </ul>
-        )}
-
-        {status && <p className="mt-3 text-xs text-muted-foreground">{status}</p>}
-      </section>
-
-      {/* ── Chat ── */}
-      <section className="flex min-h-[420px] flex-col rounded-2xl border border-border bg-card">
-        <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-5">
-          {messages.length === 0 && (
-            <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
-              <RiRobot2Line className="size-8 text-muted-foreground/60" />
-              <p className="text-sm text-muted-foreground">
-                Preguntame sobre tus documentos. Ej: "¿qué dice sobre embeddings?"
-              </p>
-            </div>
-          )}
-          {messages.map((m, i) => (
-            <div key={i} className={cn("flex gap-2.5", m.role === "user" ? "justify-end" : "justify-start")}>
-              <div
-                className={cn(
-                  "flex size-7 shrink-0 items-center justify-center rounded-full",
-                  m.role === "user" ? "order-last bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
-                )}
-              >
-                {m.role === "user" ? <RiUserLine className="size-4" /> : <RiRobot2Line className="size-4" />}
+            {messages.map((m, i) => (
+              <div key={i} className={cn("flex gap-2.5", m.role === "user" ? "justify-end" : "justify-start")}>
+                <div
+                  className={cn(
+                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
+                    m.role === "user" ? "order-last bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+                  )}
+                >
+                  {m.role === "user" ? <RiUserLine className="h-4 w-4" /> : <RiRobot2Line className="h-4 w-4" />}
+                </div>
+                <div
+                  className={cn(
+                    "max-w-[78%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
+                    m.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+                  )}
+                >
+                  {m.content}
+                </div>
               </div>
-              <div
-                className={cn(
-                  "max-w-[78%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
-                  m.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
-                )}
-              >
-                {m.content}
+            ))}
+            {busy === "chat" && (
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                  <RiRobot2Line className="h-4 w-4" />
+                </div>
+                <div className="flex items-center gap-1.5 rounded-2xl bg-muted px-4 py-2.5 text-sm text-muted-foreground">
+                  <RiLoader4Line className="h-4 w-4 animate-spin" />
+                  Buscando y respondiendo…
+                </div>
               </div>
-            </div>
-          ))}
-          {busy === "chat" && (
-            <div className="flex items-center gap-2.5">
-              <div className="flex size-7 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                <RiRobot2Line className="size-4" />
-              </div>
-              <div className="flex items-center gap-1.5 rounded-2xl bg-muted px-4 py-2.5 text-sm text-muted-foreground">
-                <RiLoader4Line className="size-4 animate-spin" />
-                Buscando y respondiendo…
-              </div>
-            </div>
-          )}
-          <div ref={bottomRef} />
-        </div>
-
-        {lastError && (
-          <div className="px-5 pb-3">
-            <AIErrorCard error={lastError} onOpenKeysModal={openApiKeysModal} />
+            )}
+            <div ref={bottomRef} />
           </div>
-        )}
 
-        <div className="flex items-end gap-2 border-t border-border p-4">
-          <input
-            ref={inputRef}
-            value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()}
-            placeholder={docs.length === 0 ? "Subí o importá documentos primero…" : "Escribí tu pregunta…"}
-            disabled={busy !== null}
-            className="min-w-0 flex-1 rounded-full border border-border bg-muted/40 px-4 py-2.5 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-ring focus:bg-background disabled:opacity-50"
-          />
-          <Button className="rounded-full" size="icon-sm" onClick={send} disabled={!canChat} aria-label="Enviar">
-            {busy === "chat" ? <RiLoader4Line className="size-4 animate-spin" /> : <RiSendPlaneLine className="size-4" />}
-          </Button>
-          <Button variant="outline" size="sm" className="rounded-full" onClick={handleClearChat} disabled={messages.length === 0} title="Borrar historial">
-            <RiDeleteBinLine className="size-4" />
-          </Button>
+          {lastError && (
+            <AIErrorCard error={lastError} onOpenKeysModal={openApiKeysModal} />
+          )}
+
+          <div className="flex items-center gap-2">
+            <Input
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()}
+              placeholder={docs.length === 0 ? "Subí o importá documentos primero…" : "Escribí tu pregunta…"}
+              disabled={busy !== null}
+              className="flex-1"
+            />
+            <Button className="rounded-full" size="icon" onClick={send} disabled={busy !== null || !question.trim()} aria-label="Enviar">
+              {busy === "chat" ? <RiLoader4Line className="size-4 animate-spin" /> : <RiSendPlaneLine className="size-4" />}
+            </Button>
+          </div>
         </div>
-      </section>
-    </div>
+      </CardContent>
+    </Card>
   )
 }
 
