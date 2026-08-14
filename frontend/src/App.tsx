@@ -17,6 +17,7 @@ import { ApiKeysModal } from "@/components/ApiKeysModal"
 import { Playground } from "@/pages/Playground"
 import { DocsPage } from "@/pages/DocsPage"
 import { AgentCreator } from "@/pages/AgentCreator"
+import { ChatbotPage } from "@/pages/ChatbotPage"
 import { FundamentosLesson } from "@/pages/lessons/FundamentosLesson"
 import { ContextoTemperatureLesson } from "@/pages/lessons/ContextoTemperatureLesson"
 import { PromptsStructuredLesson } from "@/pages/lessons/PromptsStructuredLesson"
@@ -55,6 +56,7 @@ const GROUPS: Array<{ group: string; items: NavItem[] }> = [
     group: "Práctica",
     items: [
       { to: "/", label: "Playground", end: true },
+      { to: "/chat", label: "Chatbot Local" },
       { to: "/agents", label: "Mis Agentes" },
     ],
   },
@@ -350,6 +352,11 @@ function Header({ onMenu, onSearch }: HeaderProps) {
           />
           <NavPill to="/" label="Playground" active={location.pathname === "/"} />
           <NavPill
+            to="/chat"
+            label="Chatbot Local"
+            active={location.pathname === "/chat"}
+          />
+          <NavPill
             to="/agents"
             label="Mis Agentes"
             active={location.pathname === "/agents"}
@@ -414,6 +421,7 @@ function AppRoutes() {
     <div key={location.pathname} className="anim-slide-in">
       <Routes>
         <Route path="/" element={<Playground />} />
+        <Route path="/chat" element={<ChatbotPage />} />
         <Route path="/docs" element={<DocsPage />} />
         <Route path="/aprender/fundamentos" element={<FundamentosLesson />} />
         <Route path="/aprender/contexto-temperature" element={<ContextoTemperatureLesson />} />
