@@ -2,7 +2,7 @@
 // RAG completo (doc #22-28): chunk → embedding → vector store → retrieve → filtro umbral → filtro permisos → LLM.
 // Store en memoria (local, sin infra). Para prod: pgvector / Pinecone / Qdrant (#25).
 
-import { chatCompletion, createEmbedding, getDefaultProvider, getLastEmbeddingMode, Provider } from "./llm.js";
+import { chatCompletion, createEmbedding, getDefaultProvider, getLastEmbeddingMode, getLastEmbeddingModel, getModel, Provider } from "./llm.js";
 import { loadStore, saveStore, StoredChunk } from "./store-persist.js";
 
 // ── 1. CHUNKING (#23) ──
@@ -136,6 +136,8 @@ export interface RagResult {
   scoredHits: ScoredHit[];
   pythonLog: string;
   embeddingMode: string;
+  model: string;
+  embeddingModel: string;
   llmNote?: string;
   embedTokens: number;
   promptTokens: number;
@@ -165,6 +167,8 @@ export async function ask(
   const embTime = Date.now() - startTime;
   const vectorDim = qVec.length;
   const embeddingMode = getLastEmbeddingMode();
+  const embeddingModel = getLastEmbeddingModel();
+  const model = getModel({ provider: effectiveProvider, apiKey });
 
   const candidates = searchScored(qVec, Math.max(topK, 5), threshold);
   const scoredHits: ScoredHit[] = candidates.map(({ doc, score, passedThreshold }) => ({
@@ -300,6 +304,8 @@ export async function ask(
     scoredHits,
     pythonLog,
     embeddingMode,
+    model,
+    embeddingModel,
     llmNote: llmNote || undefined,
     embedTokens,
     promptTokens,

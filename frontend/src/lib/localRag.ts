@@ -133,6 +133,32 @@ export function clearStore(): void {
 }
 
 // ── 5. EMBEDDINGS vía proveedor (fetch directo, CORS habilitado) ──
+// Modelos por proveedor (espejo de server/llm.ts). Expuestos para mostrarlos en la UI.
+export function getChatModel(provider: LocalProvider): string {
+  switch (provider) {
+    case "openai":
+      return "gpt-4o-mini"
+    case "openrouter":
+      return "google/gemma-4-26b-a4b-it:free"
+    case "groq":
+      return "llama-3.1-70b-versatile"
+    case "gemini":
+      return "gemini-1.5-flash"
+  }
+}
+
+export function getEmbeddingModel(provider: LocalProvider): string {
+  switch (provider) {
+    case "openai":
+      return "text-embedding-3-small"
+    case "gemini":
+      return "text-embedding-004"
+    case "openrouter":
+    case "groq": // groq no tiene embeddings: usa OpenRouter
+      return "nvidia/nemotron-3-embed-1b:free"
+  }
+}
+
 interface EmbedResolved {
   mode: "provider" | "local"
   url?: string
@@ -145,20 +171,20 @@ function resolveEmbedding(keys: LocalApiKeys, provider: LocalProvider): EmbedRes
   switch (provider) {
     case "openai":
       if (keys.openai?.trim())
-        return { mode: "provider", url: "https://api.openai.com/v1/embeddings", key: keys.openai.trim(), model: "text-embedding-3-small", provider: "openai" }
+        return { mode: "provider", url: "https://api.openai.com/v1/embeddings", key: keys.openai.trim(), model: getEmbeddingModel("openai"), provider: "openai" }
       break
     case "openrouter":
       if (keys.openrouter?.trim())
-        return { mode: "provider", url: "https://openrouter.ai/api/v1/embeddings", key: keys.openrouter.trim(), model: "nvidia/nemotron-3-embed-1b:free", provider: "openrouter" }
+        return { mode: "provider", url: "https://openrouter.ai/api/v1/embeddings", key: keys.openrouter.trim(), model: getEmbeddingModel("openrouter"), provider: "openrouter" }
       break
     case "gemini":
       if (keys.gemini?.trim())
-        return { mode: "provider", url: "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent", key: keys.gemini.trim(), model: "text-embedding-004", provider: "gemini" }
+        return { mode: "provider", url: "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent", key: keys.gemini.trim(), model: getEmbeddingModel("gemini"), provider: "gemini" }
       break
     case "groq":
       // Groq no tiene API de embeddings: usar OpenRouter si hay key (igual que el server).
       if (keys.openrouter?.trim())
-        return { mode: "provider", url: "https://openrouter.ai/api/v1/embeddings", key: keys.openrouter.trim(), model: "nvidia/nemotron-3-embed-1b:free", provider: "openrouter" }
+        return { mode: "provider", url: "https://openrouter.ai/api/v1/embeddings", key: keys.openrouter.trim(), model: getEmbeddingModel("groq"), provider: "openrouter" }
       break
   }
   return { mode: "local" }
@@ -263,13 +289,13 @@ interface ChatMessage {
 function resolveChat(keys: LocalApiKeys, provider: LocalProvider): { url: string; key: string; model: string; provider: string } {
   switch (provider) {
     case "openai":
-      return { url: "https://api.openai.com/v1/chat/completions", key: keys.openai.trim(), model: "gpt-4o-mini", provider: "openai" }
+      return { url: "https://api.openai.com/v1/chat/completions", key: keys.openai.trim(), model: getChatModel("openai"), provider: "openai" }
     case "openrouter":
-      return { url: "https://openrouter.ai/api/v1/chat/completions", key: keys.openrouter.trim(), model: "google/gemma-4-26b-a4b-it:free", provider: "openrouter" }
+      return { url: "https://openrouter.ai/api/v1/chat/completions", key: keys.openrouter.trim(), model: getChatModel("openrouter"), provider: "openrouter" }
     case "groq":
-      return { url: "https://api.groq.com/openai/v1/chat/completions", key: keys.groq.trim(), model: "llama-3.1-70b-versatile", provider: "groq" }
+      return { url: "https://api.groq.com/openai/v1/chat/completions", key: keys.groq.trim(), model: getChatModel("groq"), provider: "groq" }
     case "gemini":
-      return { url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent", key: keys.gemini.trim(), model: "gemini-1.5-flash", provider: "gemini" }
+      return { url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent", key: keys.gemini.trim(), model: getChatModel("gemini"), provider: "gemini" }
   }
 }
 

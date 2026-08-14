@@ -30,6 +30,8 @@ import {
   chatCompletion,
   clearStore,
   embedTexts,
+  getChatModel,
+  getEmbeddingModel,
   importFromServer,
   indexText,
   loadStore,
@@ -327,7 +329,8 @@ export function ChatbotPage() {
 
       <CardContent className="flex flex-col gap-5 px-6 sm:px-8">
         {/* Proveedor y Gestor de API Keys (.env local) */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-medium text-muted-foreground ml-0.5">Proveedor:</span>
             <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-full shadow-xs">
@@ -375,6 +378,12 @@ export function ChatbotPage() {
             </Button>
           </div>
         </div>
+
+        <p className="text-[11px] text-muted-foreground">
+          Modelos — chat: <span className="font-mono text-foreground/80">{getChatModel(activeProvider)}</span> · embeddings:{" "}
+          <span className="font-mono text-foreground/80">{getEmbeddingModel(activeProvider)}</span>
+        </p>
+      </div>
 
         {/* Documentos en localStorage */}
         <div className="flex flex-col gap-3">

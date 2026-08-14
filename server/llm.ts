@@ -372,6 +372,7 @@ export async function createEmbedding(
     if (providerForEmbedding === "gemini") {
       const model = client.getGenerativeModel({ model: "text-embedding-004" });
       const result = await model.embedContent(text);
+      lastEmbeddingModel = "text-embedding-004";
       return (
         markEmbeddingMode("provider"),
         {
@@ -388,6 +389,7 @@ export async function createEmbedding(
         input: text,
         encoding_format: "float",
       });
+      lastEmbeddingModel = model;
       return (
         markEmbeddingMode("provider"),
         {
@@ -399,6 +401,7 @@ export async function createEmbedding(
 
     const model = process.env.EMBEDDING_MODEL ?? "text-embedding-3-small";
     const response = await client.embeddings.create({ model, input: text });
+    lastEmbeddingModel = model;
     return (
       markEmbeddingMode("provider"),
       {
@@ -431,6 +434,7 @@ export async function createEmbedding(
         `La práctica usa vectores locales. Configurá una API key válida para embeddings reales.`
     );
     lastEmbeddingMode = "local";
+    lastEmbeddingModel = "local-tfidf";
     return { vector: generateLocalEmbedding(text, 1536), tokens: Math.ceil(text.length / 4) };
   }
 }
@@ -439,6 +443,11 @@ export async function createEmbedding(
 let lastEmbeddingMode: "provider" | "local" = "local";
 export function getLastEmbeddingMode(): "provider" | "local" {
   return lastEmbeddingMode;
+}
+// Último modelo de embedding usado (para mostrarlo en la UI)
+let lastEmbeddingModel = "local-tfidf";
+export function getLastEmbeddingModel(): string {
+  return lastEmbeddingModel;
 }
 function markEmbeddingMode(mode: "provider" | "local") {
   lastEmbeddingMode = mode;

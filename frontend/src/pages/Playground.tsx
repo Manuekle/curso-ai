@@ -350,6 +350,7 @@ export function Playground() {
           `documentos relevantes: ${data.hits} (umbral ${data.threshold}) · autorizados: ${data.allowedHits} · ` +
             `fuentes: ${data.sources.length ? data.sources.join(", ") : "ninguna"} · ` +
             `embeddings: ${data.embeddingMode === "local" ? "modo local (sin API válida)" : "API real"} · ` +
+            `modelo chat: ${data.model ?? "?"} · embeddings: ${data.embeddingModel ?? "?"} · ` +
             `latencia: ${data.latencyMs ?? 0}ms`
         )
         setPythonLog(data.pythonLog ?? "")
