@@ -8,8 +8,6 @@ import {
   RiKey2Line,
   RiPlayLine,
   RiRobot2Line,
-  RiShieldCheckLine,
-  RiToolsLine,
 } from "@remixicon/react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"

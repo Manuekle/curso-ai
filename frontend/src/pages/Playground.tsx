@@ -13,7 +13,6 @@ import {
   RiLoader4Line,
   RiRefreshLine,
   RiSearchLine,
-  RiShieldCheckLine,
   RiTerminalBoxLine,
   RiTimeLine,
   RiUploadCloud2Line,
