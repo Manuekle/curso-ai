@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 import { getDocument, GlobalWorkerOptions } from "pdfjs-dist"
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url"
 import * as mammoth from "mammoth"
@@ -63,6 +63,120 @@ function formatSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+// Mini-renderer markdown para respuestas del asistente: negrita, itálica, código
+// (inline y bloques), listas, links y citas [fuente: X] como chips.
+const INLINE_TOKEN =
+  /(\[fuente: [^\]]+\]|\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\([^)]+\)|\*[^*]+\*)/g
+
+function renderInline(text: string, keyPrefix = ""): ReactNode[] {
+  const parts = text.split(INLINE_TOKEN)
+  return parts.map((part, i) => {
+    const key = `${keyPrefix}-${i}`
+    if (part.startsWith("[fuente: ")) {
+      return (
+        <span key={key} className="mx-0.5 inline-block rounded-md bg-ring/15 px-1.5 py-0.5 font-mono text-[11px] text-ring">
+          {part}
+        </span>
+      )
+    }
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return (
+        <strong key={key} className="font-semibold">
+          {renderInline(part.slice(2, -2), key)}
+        </strong>
+      )
+    }
+    if (part.startsWith("`") && part.endsWith("`")) {
+      return (
+        <code key={key} className="rounded bg-foreground/10 px-1 py-0.5 font-mono text-[12px]">
+          {part.slice(1, -1)}
+        </code>
+      )
+    }
+    if (part.startsWith("[") && part.includes("](")) {
+      const m = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/)
+      if (m) {
+        return (
+          <a key={key} href={m[2]} target="_blank" rel="noreferrer" className="text-ring underline underline-offset-2">
+            {m[1]}
+          </a>
+        )
+      }
+    }
+    if (part.startsWith("*") && part.endsWith("*") && part.length > 2) {
+      return (
+        <em key={key} className="italic">
+          {renderInline(part.slice(1, -1), key)}
+        </em>
+      )
+    }
+    return <span key={key}>{part}</span>
+  })
+}
+
+function renderMarkdown(content: string): ReactNode[] {
+  const blocks: ReactNode[] = []
+  const lines = content.split("\n")
+  let inCode = false
+  let codeBuf: string[] = []
+  let listBuf: { ordered: boolean; text: string }[] = []
+  let blockKey = 0
+
+  const flushList = () => {
+    if (listBuf.length === 0) return
+    const items = listBuf.map((li, i) => <li key={i}>{renderInline(li.text, `li-${blockKey}-${i}`)}</li>)
+    blocks.push(
+      <ul key={`list-${blockKey++}`} className={listBuf[0].ordered ? "list-decimal pl-5" : "list-disc pl-5"}>
+        {items}
+      </ul>
+    )
+    listBuf = []
+  }
+
+  for (const line of lines) {
+    if (line.trim().startsWith("```")) {
+      if (inCode) {
+        blocks.push(
+          <pre key={`code-${blockKey++}`} className="overflow-x-auto rounded-lg bg-foreground/10 p-3 font-mono text-xs leading-relaxed">
+            {codeBuf.join("\n")}
+          </pre>
+        )
+        inCode = false
+      } else {
+        flushList()
+        inCode = true
+        codeBuf = []
+      }
+      continue
+    }
+    if (inCode) {
+      codeBuf.push(line)
+      continue
+    }
+    if (line.trim() === "") {
+      flushList()
+      continue
+    }
+    const bullet = line.match(/^[-*]\s+(.*)$/)
+    const numbered = line.match(/^\d+[.)]\s+(.*)$/)
+    if (bullet || numbered) {
+      listBuf.push({ ordered: Boolean(numbered), text: bullet?.[1] ?? numbered?.[1] ?? "" })
+      continue
+    }
+    flushList()
+    blocks.push(<p key={`p-${blockKey++}`}>{renderInline(line, `p-${blockKey}`)}</p>)
+  }
+  flushList()
+  if (inCode && codeBuf.length) {
+    blocks.push(
+      <pre key={`code-${blockKey++}`} className="overflow-x-auto rounded-lg bg-foreground/10 p-3 font-mono text-xs leading-relaxed">
+        {codeBuf.join("\n")}
+      </pre>
+    )
+  }
+  return blocks
 }
 
 // Extrae texto plano según extensión: pdf / docx / xlsx / csv / md / txt.
@@ -579,11 +693,17 @@ export function ChatbotPage() {
                 </div>
                 <div
                   className={cn(
-                    "max-w-[78%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
-                    m.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+                    "max-w-[78%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
+                    m.role === "user"
+                      ? "whitespace-pre-wrap bg-primary text-primary-foreground"
+                      : "bg-muted text-foreground"
                   )}
                 >
-                  {m.content}
+                  {m.role === "assistant" ? (
+                    <div className="flex flex-col gap-1.5">{renderMarkdown(m.content)}</div>
+                  ) : (
+                    m.content
+                  )}
                 </div>
               </div>
             ))}
