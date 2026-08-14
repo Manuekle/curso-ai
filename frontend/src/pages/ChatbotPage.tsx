@@ -1,4 +1,8 @@
 import { useEffect, useRef, useState } from "react"
+import { getDocument, GlobalWorkerOptions } from "pdfjs-dist"
+import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url"
+import * as mammoth from "mammoth"
+import * as XLSX from "xlsx"
 import {
   RiDeleteBinLine,
   RiDatabase2Line,
@@ -31,6 +35,45 @@ interface ChatMessage {
 
 const HISTORY_KEY = "chatbot-history"
 const MAX_CHUNKS = 400
+
+GlobalWorkerOptions.workerSrc = pdfWorkerUrl
+
+// Extrae texto plano según extensión: pdf / docx / xlsx / csv / md / txt.
+async function extractText(file: File): Promise<{ text: string; name: string }> {
+  const base = file.name.replace(/\.[^.]+$/, "")
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? ""
+
+  if (ext === "pdf") {
+    const buf = await file.arrayBuffer()
+    const pdf = await getDocument({ data: buf }).promise
+    let out = ""
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i)
+      const content = await page.getTextContent()
+      out += content.items.map((it) => ("str" in it ? it.str : "")).join(" ") + "\n"
+    }
+    return { text: out, name: base }
+  }
+
+  if (ext === "docx") {
+    const buf = await file.arrayBuffer()
+    const res = await mammoth.extractRawText({ arrayBuffer: buf })
+    return { text: res.value ?? "", name: base }
+  }
+
+  if (ext === "xlsx") {
+    const buf = await file.arrayBuffer()
+    const wb = XLSX.read(buf)
+    const parts: string[] = []
+    for (const sheet of wb.SheetNames) {
+      parts.push(`[hoja: ${sheet}]\n` + XLSX.utils.sheet_to_csv(wb.Sheets[sheet]))
+    }
+    return { text: parts.join("\n\n"), name: base }
+  }
+
+  // md, txt, csv → texto plano directo
+  return { text: await file.text(), name: base }
+}
 
 function loadHistory(): ChatMessage[] {
   try {
@@ -79,25 +122,29 @@ export function ChatbotPage() {
     setStatus("")
     let added = 0
     let lastMode: "provider" | "local" = "local"
+    const errors: string[] = []
     for (const file of Array.from(files)) {
-      if (!/\.(md|txt)$/i.test(file.name)) {
-        setStatus(`Saltado (no md/txt): ${file.name}`)
-        continue
-      }
-      const text = await file.text()
-      if (!text.trim()) continue
-      const name = file.name.replace(/\.[^.]+$/, "")
-      const res = await indexText(name, text, apiKeys, activeProvider)
-      added += res.chunks
-      lastMode = res.mode
-      if (docs.length + added > MAX_CHUNKS) {
-        setStatus(`Límite de ${MAX_CHUNKS} chunks alcanzado. Borrá docs o importá menos.`)
-        break
+      try {
+        const { text, name } = await extractText(file)
+        if (!text.trim()) {
+          errors.push(`${file.name}: sin texto extraído`)
+          continue
+        }
+        const res = await indexText(name, text, apiKeys, activeProvider)
+        added += res.chunks
+        lastMode = res.mode
+        if (docs.length + added > MAX_CHUNKS) {
+          setStatus(`Límite de ${MAX_CHUNKS} chunks alcanzado. Borrá docs o importá menos.`)
+          break
+        }
+      } catch (err: any) {
+        errors.push(`${file.name}: ${err?.message ?? err}`)
       }
     }
     setDocs(loadStore())
     setMode(lastMode)
-    setStatus(added > 0 ? `${added} chunks indexados` : status || "")
+    const summary = [added > 0 ? `${added} chunks indexados` : "", errors.join(" · ")].filter(Boolean).join(" — ")
+    setStatus(summary)
     setBusy(null)
     if (fileRef.current) fileRef.current.value = ""
   }
@@ -140,7 +187,7 @@ export function ChatbotPage() {
 
     const currentDocs = docs
     if (currentDocs.length === 0) {
-      setMessages([...updated, { role: "assistant", content: "La base local está vacía. Subí un archivo md/txt o importá la base del server para que pueda responder." }])
+      setMessages([...updated, { role: "assistant", content: "La base local está vacía. Subí un archivo (md, txt, pdf, docx, xlsx, csv) o importá la base del server para que pueda responder." }])
       return
     }
 
@@ -250,12 +297,12 @@ export function ChatbotPage() {
         >
           <RiUploadCloud2Line className="size-6 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
-            Arrastrá o tocá para subir archivos <span className="font-medium text-foreground">.md / .txt</span>
+            Arrastrá o tocá para subir archivos <span className="font-medium text-foreground">.md · .txt · .pdf · .docx · .xlsx · .csv</span>
           </p>
           <input
             ref={fileRef}
             type="file"
-            accept=".md,.txt,text/markdown,text/plain"
+            accept=".md,.txt,.pdf,.docx,.xlsx,.csv,text/markdown,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             multiple
             className="hidden"
             onChange={(e) => handleFiles(e.target.files)}
