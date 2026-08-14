@@ -28,6 +28,7 @@ import { ChunksLesson } from "@/pages/lessons/ChunksLesson"
 import { EmbeddingsLesson } from "@/pages/lessons/EmbeddingsLesson"
 import { RetrievalLesson } from "@/pages/lessons/RetrievalLesson"
 import { RagLesson } from "@/pages/lessons/RagLesson"
+import { LangChainLesson } from "@/pages/lessons/LangChainLesson"
 import { AlucinacionesLesson } from "@/pages/lessons/AlucinacionesLesson"
 import { SeguridadLesson } from "@/pages/lessons/SeguridadLesson"
 import { ApisLesson } from "@/pages/lessons/ApisLesson"
@@ -76,6 +77,7 @@ const GROUPS: Array<{ group: string; items: NavItem[] }> = [
       { to: "/aprender/retrieval", label: "Búsqueda vectorial" },
       { to: "/aprender/rag", label: "Pipeline RAG" },
       { to: "/aprender/alucinaciones", label: "Alucinaciones" },
+      { to: "/aprender/langchain", label: "LangChain" },
     ],
   },
   {
@@ -434,6 +436,7 @@ function AppRoutes() {
         <Route path="/aprender/retrieval" element={<RetrievalLesson />} />
         <Route path="/aprender/rag" element={<RagLesson />} />
         <Route path="/aprender/alucinaciones" element={<AlucinacionesLesson />} />
+        <Route path="/aprender/langchain" element={<LangChainLesson />} />
         <Route path="/aprender/seguridad" element={<SeguridadLesson />} />
         <Route path="/aprender/apis" element={<ApisLesson />} />
         <Route path="/aprender/arquitectura" element={<ArquitecturaLesson />} />
