@@ -116,7 +116,7 @@ function saveHistory(messages: ChatMessage[]) {
 }
 
 export function ChatbotPage() {
-  const { apiKeys, activeProvider, setActiveProvider } = useApiKeys()
+  const { apiKeys, activeProvider, configuredCount, setActiveProvider } = useApiKeys()
   const [docs, setDocs] = useState<LocalDoc[]>(() => loadStore())
   const [messages, setMessages] = useState<ChatMessage[]>(() => loadHistory())
   const [question, setQuestion] = useState("")
@@ -290,7 +290,7 @@ export function ChatbotPage() {
       </CardHeader>
 
       <CardContent className="flex flex-col gap-5 px-6 sm:px-8">
-        {/* Proveedor y Gestor de API Keys */}
+        {/* Proveedor y Gestor de API Keys (.env local) */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-medium text-muted-foreground ml-0.5">Proveedor:</span>
@@ -304,25 +304,40 @@ export function ChatbotPage() {
                     type="button"
                     onClick={() => setActiveProvider(p)}
                     className={cn(
-                      "flex h-7 items-center gap-1 rounded-full px-2.5 text-xs font-medium transition-all",
+                      "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-all cursor-pointer",
                       isSelected
                         ? "bg-background text-foreground shadow-xs"
-                        : hasKey
-                        ? "text-muted-foreground hover:text-foreground"
-                        : "text-muted-foreground/50 hover:text-muted-foreground"
+                        : "text-muted-foreground hover:text-foreground hover:bg-background/50"
                     )}
                   >
-                    {p}
-                    {hasKey && <span className="size-1.5 rounded-full bg-emerald-500" />}
+                    <span
+                      className={cn(
+                        "size-2 rounded-full shrink-0",
+                        hasKey ? "bg-emerald-500" : "bg-muted-foreground/40"
+                      )}
+                    />
+                    <span className="capitalize">{p}</span>
                   </button>
                 )
               })}
             </div>
           </div>
-          <Button variant="outline" size="sm" className="rounded-full" onClick={openApiKeysModal}>
-            <RiKey2Line className="size-3.5" />
-            API Keys (.env)
-          </Button>
+
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={openApiKeysModal}
+              className="h-8 text-xs gap-1.5 rounded-full border-border/80 hover:bg-secondary/70 transition-colors cursor-pointer"
+            >
+              <RiKey2Line className="size-3.5 text-primary" />
+              <span>Configurar API Keys (.env)</span>
+              <span className="rounded-full bg-muted px-1.5 py-0.2 text-[10px] font-mono text-muted-foreground">
+                {configuredCount}/4
+              </span>
+            </Button>
+          </div>
         </div>
 
         {/* Documentos en localStorage */}
