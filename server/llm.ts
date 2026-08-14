@@ -343,10 +343,11 @@ export async function chatCompletion(
 }
 
 // Wrapper de embeddings unificado con fallback local de alta fidelidad
+// Devuelve vector + tokens gastados (usage del proveedor, o estimación chars/4).
 export async function createEmbedding(
   config: LLMConfig,
   text: string
-): Promise<number[]> {
+): Promise<{ vector: number[]; tokens: number }> {
   const provider = config.provider || getDefaultProvider();
   const effectiveConfig: LLMConfig = { ...config, provider };
 
@@ -371,7 +372,13 @@ export async function createEmbedding(
     if (providerForEmbedding === "gemini") {
       const model = client.getGenerativeModel({ model: "text-embedding-004" });
       const result = await model.embedContent(text);
-      return markEmbeddingMode("provider"), toEmbeddingDim(result.embedding.values);
+      return (
+        markEmbeddingMode("provider"),
+        {
+          vector: toEmbeddingDim(result.embedding.values),
+          tokens: result.usageMetadata?.totalTokenCount ?? Math.ceil(text.length / 4),
+        }
+      );
     }
 
     if (providerForEmbedding === "openrouter") {
@@ -381,12 +388,24 @@ export async function createEmbedding(
         input: text,
         encoding_format: "float",
       });
-      return markEmbeddingMode("provider"), toEmbeddingDim(response.data[0].embedding);
+      return (
+        markEmbeddingMode("provider"),
+        {
+          vector: toEmbeddingDim(response.data[0].embedding),
+          tokens: response.usage?.total_tokens ?? response.usage?.prompt_tokens ?? Math.ceil(text.length / 4),
+        }
+      );
     }
 
     const model = process.env.EMBEDDING_MODEL ?? "text-embedding-3-small";
     const response = await client.embeddings.create({ model, input: text });
-    return markEmbeddingMode("provider"), toEmbeddingDim(response.data[0].embedding);
+    return (
+      markEmbeddingMode("provider"),
+      {
+        vector: toEmbeddingDim(response.data[0].embedding),
+        tokens: response.usage?.total_tokens ?? response.usage?.prompt_tokens ?? Math.ceil(text.length / 4),
+      }
+    );
   } catch (error: any) {
     console.warn(`Aviso: Error en createEmbedding (${provider}): ${error.message}. Buscando fallback…`);
 
@@ -412,7 +431,7 @@ export async function createEmbedding(
         `La práctica usa vectores locales. Configurá una API key válida para embeddings reales.`
     );
     lastEmbeddingMode = "local";
-    return generateLocalEmbedding(text, 1536);
+    return { vector: generateLocalEmbedding(text, 1536), tokens: Math.ceil(text.length / 4) };
   }
 }
 

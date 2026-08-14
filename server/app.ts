@@ -166,8 +166,8 @@ app.post("/api/rag/index", async (req, res) => {
     const { text, owner = "demo", config } = req.body as { text: string; owner?: string; config?: any };
     if (!text) return res.status(400).json({ error: "text requerido" });
     const id = `doc-${Date.now()}`;
-    const chunks = await indexDocument(id, text, owner, config?.apiKey, config?.provider);
-    res.json({ id, chunks, totalDocs: store.length });
+    const { chunks, embedTokens } = await indexDocument(id, text, owner, config?.apiKey, config?.provider);
+    res.json({ id, chunks, embedTokens, totalDocs: store.length });
   } catch (err) {
     sendError(res, err);
   }
@@ -179,7 +179,7 @@ app.post("/api/rag/index-file", upload.array("files", 10), async (req, res) => {
     const files = req.files as Express.Multer.File[] | undefined;
     if (!files || files.length === 0) return res.status(400).json({ error: "files requerido" });
     const owner = (req.body?.owner as string) || "demo";
-    const results: { id?: string; filename: string; chars?: number; chunks?: number; error?: string }[] = [];
+    const results: { id?: string; filename: string; chars?: number; chunks?: number; embedTokens?: number; error?: string }[] = [];
     for (const file of files) {
       const filename = file.originalname;
       const text = await extractText(file.buffer, filename);
@@ -188,8 +188,8 @@ app.post("/api/rag/index-file", upload.array("files", 10), async (req, res) => {
         continue;
       }
       const id = `file-${Date.now()}-${results.length}`;
-      const chunks = await indexDocument(id, text, owner);
-      results.push({ id, filename, chars: text.length, chunks });
+      const { chunks, embedTokens } = await indexDocument(id, text, owner);
+      results.push({ id, filename, chars: text.length, chunks, embedTokens });
     }
     res.json({ files: results, totalDocs: store.length });
   } catch (err) {

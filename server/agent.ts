@@ -90,6 +90,8 @@ export interface AgentResult {
   latencyMs: number;
   steps: AgentStep[];
   pythonLog: string;
+  promptTokens: number;
+  completionTokens: number;
 }
 
 export async function runAgent(
@@ -116,6 +118,8 @@ export async function runAgent(
 
   let toolCallsCount = 0;
   let iterations = 0;
+  let totalPromptTokens = 0;
+  let totalCompletionTokens = 0;
   const steps: AgentStep[] = [];
   const logLines: string[] = [
     `[AI Agent] Mode: ReAct / Tool-Calling | Provider: ${effectiveProvider} | Max Iterations: ${MAX_ITERATIONS}`,
@@ -146,6 +150,13 @@ export async function runAgent(
     }
 
     const msg = res?.choices?.[0]?.message;
+
+    // Cada llamada al LLM cobra prompt + completion: acumular para el total real gastado.
+    const usage = res?.usage;
+    if (usage?.prompt_tokens) {
+      totalPromptTokens += usage.prompt_tokens;
+      totalCompletionTokens += usage.completion_tokens || 0;
+    }
 
     // Si el LLM devolvió tool calls
     if (msg?.tool_calls?.length) {
@@ -221,6 +232,13 @@ export async function runAgent(
     );
 
     const totalLatencyMs = Date.now() - startTime;
+
+    // Sin usage del proveedor (gemini o fallback local): estimar con chars/4.
+    if (!totalPromptTokens && !totalCompletionTokens) {
+      totalPromptTokens = Math.ceil(JSON.stringify(messages).length / 4);
+      totalCompletionTokens = Math.ceil(finalAnswer.length / 4);
+    }
+
     steps.push({
       iteration: iterations + 1,
       action: "final_answer",
@@ -228,7 +246,7 @@ export async function runAgent(
     });
 
     logLines.push(`--------------------------------------------------------------------------------`);
-    logLines.push(`[Final Synthesis] Iterations: ${iterations + 1} | Tool Calls: ${toolCallsCount} | Latency: ${totalLatencyMs}ms`);
+    logLines.push(`[Final Synthesis] Iterations: ${iterations + 1} | Tool Calls: ${toolCallsCount} | Tokens in: ${totalPromptTokens} | out: ${totalCompletionTokens} | Latency: ${totalLatencyMs}ms`);
     logLines.push(`[Agent Answer] ${finalAnswer}`);
 
     return {
@@ -238,6 +256,8 @@ export async function runAgent(
       latencyMs: totalLatencyMs,
       steps,
       pythonLog: logLines.join("\n"),
+      promptTokens: totalPromptTokens,
+      completionTokens: totalCompletionTokens,
     };
   }
 

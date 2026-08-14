@@ -83,7 +83,7 @@ const docs = [
 
 export async function seedDocs(): Promise<number> {
   for (const d of docs) {
-    const n = await indexDocument(d.id, d.text, d.owner);
+    const { chunks: n } = await indexDocument(d.id, d.text, d.owner);
     console.log(`Indexado ${d.id} → ${n} chunks`);
   }
   return store.length;
@@ -102,7 +102,7 @@ export async function seedDocsTest(): Promise<number> {
     const text = await readFile(join(DOCS_TEST_DIR, f), "utf8");
     const owner = OWNER_BY_FILE[f] ?? "demo";
     const id = `docs-${f}`;
-    const n = await indexDocument(id, text, owner);
+    const { chunks: n } = await indexDocument(id, text, owner);
     console.log(`Indexado ${id} (owner: ${owner}) → ${n} chunks`);
   }
   return store.length;

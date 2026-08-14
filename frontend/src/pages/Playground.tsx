@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import {
   RiCheckLine,
   RiCloseLine,
+  RiCoinsLine,
   RiDatabase2Line,
   RiDeleteBinLine,
   RiFileCopyLine,
@@ -165,6 +166,7 @@ export function Playground() {
   const [agentSteps, setAgentSteps] = useState<AgentStep[]>([])
   const [specializedResults, setSpecializedResults] = useState<SpecializedResult[]>([])
   const [latencyMs, setLatencyMs] = useState<number>(0)
+  const [tokens, setTokens] = useState<{ in: number; out: number } | null>(null)
   const [vectorDims, setVectorDims] = useState<number>(1536)
 
   const { apiKeys, activeProvider: provider, setActiveProvider: setProvider, configuredCount } = useApiKeys()
@@ -310,6 +312,7 @@ export function Playground() {
     setAgentSteps([])
     setSpecializedResults([])
     setLatencyMs(0)
+    setTokens(null)
 
     try {
       const res = await fetch(ENDPOINTS[mode], {
@@ -333,10 +336,15 @@ export function Playground() {
 
       if (mode === "agent") {
         setAnswer(data.answer)
-        setMeta(`tool calls: ${data.toolCalls} · iteraciones: ${data.iterations} · latencia: ${data.latencyMs ?? 0}ms`)
+        setMeta(
+          `tool calls: ${data.toolCalls} · iteraciones: ${data.iterations} · ` +
+            `tokens in: ${data.promptTokens ?? 0} · out: ${data.completionTokens ?? 0} · ` +
+            `latencia: ${data.latencyMs ?? 0}ms`
+        )
         setPythonLog(data.pythonLog ?? "")
         setAgentSteps(data.steps ?? [])
         setLatencyMs(data.latencyMs ?? 0)
+        setTokens({ in: data.promptTokens ?? 0, out: data.completionTokens ?? 0 })
       } else if (mode === "rag") {
         setAnswer(data.answer)
         setMeta(
@@ -349,6 +357,10 @@ export function Playground() {
         setScoredHits(data.scoredHits ?? [])
         setLatencyMs(data.latencyMs ?? 0)
         setVectorDims(data.dimensions ?? 1536)
+        setTokens({
+          in: (data.promptTokens ?? 0) + (data.embedTokens ?? 0),
+          out: data.completionTokens ?? 0,
+        })
         if (data.llmNote) {
           sileo.warning({
             title: "Modelo de IA no disponible",
@@ -361,6 +373,7 @@ export function Playground() {
         setPythonLog(data.pythonLog ?? "")
         setSpecializedResults(data.results ?? [])
         setLatencyMs(data.latencyMs ?? 0)
+        setTokens({ in: data.promptTokens ?? 0, out: data.completionTokens ?? 0 })
       } else if (mode === "vectordb") {
         setScoredHits(data.hits ?? [])
         setMeta(`top-${data.hits?.length ?? 0} candidatos recuperados de la base vectorial`)
@@ -392,7 +405,7 @@ export function Playground() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
-      setIndexInfo(`Indexado: ${data.chunks} chunks · total en store: ${data.totalDocs}`)
+      setIndexInfo(`Indexado: ${data.chunks} chunks · ${data.embedTokens ?? 0} tokens embedding · total en store: ${data.totalDocs}`)
       setDocText("")
       await loadVectorStore()
     } catch (err) {
@@ -421,7 +434,7 @@ export function Playground() {
               ? {
                   ...u,
                   state: r.error ? "error" : "done",
-                  msg: r.error ?? `${r.chunks} chunks · ${r.chars} chars`,
+                  msg: r.error ?? `${r.chunks} chunks · ${r.chars} chars · ${r.embedTokens ?? 0} tok-emb`,
                 }
               : u
           )
@@ -479,6 +492,12 @@ export function Playground() {
               <Badge variant="secondary" className="flex items-center gap-1 font-mono text-xs font-normal">
                 <RiTimeLine className="h-3 w-3" />
                 <NumberPopIn value={latencyMs} />ms
+              </Badge>
+            )}
+            {tokens && (tokens.in > 0 || tokens.out > 0) && (
+              <Badge variant="secondary" className="flex items-center gap-1 font-mono text-xs font-normal">
+                <RiCoinsLine className="h-3 w-3" />
+                <NumberPopIn value={tokens.in} /> in · <NumberPopIn value={tokens.out} /> out tok
               </Badge>
             )}
           </div>
@@ -603,7 +622,6 @@ export function Playground() {
 
             <div className="flex flex-col gap-1 sm:col-span-1">
               <Label className="flex items-center gap-1 text-xs font-medium">
-                <RiShieldCheckLine className="h-3.5 w-3.5 text-primary" />
                 Usuario RBAC:
               </Label>
               <div className="flex gap-2">

@@ -15,10 +15,22 @@ export function chunkText(text: string, size = 800, overlap = 100): string[] {
 }
 
 // ── 2. EMBEDDINGS (#24) ──
-export async function embed(texts: string[], apiKey?: string, provider?: Provider): Promise<number[][]> {
+export async function embedWithTokens(
+  texts: string[],
+  apiKey?: string,
+  provider?: Provider
+): Promise<{ vectors: number[][]; tokens: number }> {
   const activeProvider = provider || getDefaultProvider();
   const config = { provider: activeProvider, apiKey };
-  return Promise.all(texts.map((text) => createEmbedding(config, text)));
+  const results = await Promise.all(texts.map((text) => createEmbedding(config, text)));
+  return {
+    vectors: results.map((r) => r.vector),
+    tokens: results.reduce((s, r) => s + r.tokens, 0),
+  };
+}
+
+export async function embed(texts: string[], apiKey?: string, provider?: Provider): Promise<number[][]> {
+  return (await embedWithTokens(texts, apiKey, provider)).vectors;
 }
 
 // ── 3. VECTOR STORE en memoria (#25) ──
@@ -36,12 +48,12 @@ export async function indexDocument(
   owner: string,
   apiKey?: string,
   provider?: Provider
-): Promise<number> {
+): Promise<{ chunks: number; embedTokens: number }> {
   const chunks = chunkText(text);
-  const vectors = await embed(chunks, apiKey, provider);
+  const { vectors, tokens } = await embedWithTokens(chunks, apiKey, provider);
   chunks.forEach((c, i) => store.push({ id: `${id}:${i}`, text: c, owner, vector: vectors[i] }));
   saveStore(store);
-  return chunks.length;
+  return { chunks: chunks.length, embedTokens: tokens };
 }
 
 // Hidrata la store desde Vercel Blob (persistencia entre instancias serverless).
@@ -125,6 +137,9 @@ export interface RagResult {
   pythonLog: string;
   embeddingMode: string;
   llmNote?: string;
+  embedTokens: number;
+  promptTokens: number;
+  completionTokens: number;
 }
 
 export interface AskOptions {
@@ -144,7 +159,9 @@ export async function ask(
   const threshold = options?.threshold ?? 0.20;
   const topK = options?.topK ?? 4;
 
-  const [qVec] = await embed([question], apiKey, effectiveProvider);
+  const qEmb = await embedWithTokens([question], apiKey, effectiveProvider);
+  const qVec = qEmb.vectors[0];
+  const embedTokens = qEmb.tokens;
   const embTime = Date.now() - startTime;
   const vectorDim = qVec.length;
   const embeddingMode = getLastEmbeddingMode();
@@ -165,6 +182,8 @@ export async function ask(
   let answer = "";
   let llmTime = 0;
   let llmNote = "";
+  let promptTokens = 0;
+  let completionTokens = 0;
 
   if (store.length === 0) {
     answer =
@@ -184,27 +203,34 @@ export async function ask(
   } else {
     const context = allowed.map((c) => `[fuente: ${c.doc.id}]\n${c.doc.text}`).join("\n\n---\n\n");
     const llmStart = Date.now();
+    const ragMessages = [
+      {
+        role: "system",
+        content:
+          "Respondé SOLO con base en el contexto dado, en español. " +
+          "Mencioná la fuente citando [fuente: ...]. " +
+          "Regla crítica (#66): si el contexto no responde la pregunta, decí 'No encontré suficiente información para responder con seguridad.' " +
+          "No inventes datos.",
+      },
+      { role: "user", content: `Contexto:\n${context}\n\nPregunta: ${question}` },
+    ];
 
     try {
       const res = await chatCompletion(
         { provider: effectiveProvider, apiKey },
         {
           temperature: 0,
-          messages: [
-            {
-              role: "system",
-              content:
-                "Respondé SOLO con base en el contexto dado, en español. " +
-                "Mencioná la fuente citando [fuente: ...]. " +
-                "Regla crítica (#66): si el contexto no responde la pregunta, decí 'No encontré suficiente información para responder con seguridad.' " +
-                "No inventes datos.",
-            },
-            { role: "user", content: `Contexto:\n${context}\n\nPregunta: ${question}` },
-          ],
+          messages: ragMessages,
         }
       );
       llmTime = Date.now() - llmStart;
       answer = res.choices[0]?.message.content ?? "";
+
+      const usage = res?.usage;
+      if (usage?.prompt_tokens) {
+        promptTokens += usage.prompt_tokens;
+        completionTokens += usage.completion_tokens || 0;
+      }
     } catch (llmErr: any) {
       llmTime = Date.now() - llmStart;
       // Modo local: sin LLM disponible la práctica sigue funcionando con las fuentes recuperadas.
@@ -216,6 +242,12 @@ export async function ask(
         `[Modo local] El modelo de IA no está disponible (${llmErr?.code ?? "LLM_ERROR"}). ` +
         `Estos son los documentos recuperados que responden tu consulta:\n\n${excerpts}\n\n` +
         `Configurá una API key válida para obtener respuestas generadas por el modelo.`;
+
+      // Sin usage del proveedor: estimar con chars/4.
+      if (!promptTokens && !completionTokens) {
+        promptTokens = Math.ceil(JSON.stringify(ragMessages).length / 4);
+        completionTokens = Math.ceil(answer.length / 4);
+      }
     }
   }
 
@@ -224,7 +256,7 @@ export async function ask(
   // Generación de log estilo terminal de Python (LangChain / LlamaIndex / Rich logger)
   const logLines: string[] = [
     `[AI Pipeline] Mode: RAG | Provider: ${effectiveProvider} | Vector Store: InMemory (Docs: ${store.length})`,
-    `[Embedding] Query Vector: ${vectorDim} dims | Modo: ${embeddingMode === "local" ? "LOCAL (sin API válida)" : "proveedor"} | Latency: ${embTime}ms`,
+    `[Embedding] Query Vector: ${vectorDim} dims | Modo: ${embeddingMode === "local" ? "LOCAL (sin API válida)" : "proveedor"} | Tokens: ${embedTokens} | Latency: ${embTime}ms`,
     `[Vector Search] Top-${topK} candidates | Similitud Coseno | Umbral (Threshold): ${threshold.toFixed(2)}`,
     `--------------------------------------------------------------------------------`,
   ];
@@ -247,7 +279,7 @@ export async function ask(
     `[Context Injection] ${allowed.length} chunk(s) seleccionados | Chars: ${allowed.reduce((s, c) => s + c.doc.text.length, 0)} (~${Math.round(allowed.reduce((s, c) => s + c.doc.text.length, 0) / 4)} tokens)`
   );
   if (llmTime > 0) {
-    logLines.push(`[LLM Generation] Temperature: 0.0 | Latency: ${llmTime}ms`);
+    logLines.push(`[LLM Generation] Temperature: 0.0 | Tokens in: ${promptTokens} | out: ${completionTokens} | Latency: ${llmTime}ms`);
   }
   if (llmNote) {
     logLines.push(`[LLM Generation] No disponible: ${llmNote.slice(0, 120)}`);
@@ -269,6 +301,9 @@ export async function ask(
     pythonLog,
     embeddingMode,
     llmNote: llmNote || undefined,
+    embedTokens,
+    promptTokens,
+    completionTokens,
   };
 }
 

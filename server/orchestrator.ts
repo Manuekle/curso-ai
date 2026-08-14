@@ -9,6 +9,8 @@ export interface SpecializedResult {
   output: string;
   confidence: number;
   latencyMs: number;
+  promptTokens: number;
+  completionTokens: number;
 }
 
 // Agente especializado genérico: cada uno tiene rol + criterio de evaluación propios
@@ -23,12 +25,14 @@ async function specialized(
   const effectiveProvider = provider || getDefaultProvider();
   const config = { provider: effectiveProvider, apiKey };
 
+  const messages = [
+    { role: "system", content: role },
+    { role: "user", content: question },
+  ];
+
   try {
     const res = await chatCompletion(config, {
-      messages: [
-        { role: "system", content: role },
-        { role: "user", content: question },
-      ],
+      messages,
       // #6 structured output → fácil de validar/comparar después
       response_format: { type: "json_object" },
     });
@@ -38,11 +42,15 @@ async function specialized(
       confidence?: number;
     };
 
+    const usage = res?.usage;
+
     return {
       agent: agentName,
       output: parsed.output ?? "Análisis completado para la dimensión requerida.",
       confidence: typeof parsed.confidence === "number" ? parsed.confidence : 0.85,
       latencyMs: Date.now() - start,
+      promptTokens: usage?.prompt_tokens ?? Math.ceil(JSON.stringify(messages).length / 4),
+      completionTokens: usage?.completion_tokens ?? Math.ceil((parsed.output ?? "").length / 4),
     };
   } catch {
     // Fallback local determinista para agentes especializados
@@ -56,6 +64,8 @@ async function specialized(
       output: fallbackOutput,
       confidence: 0.9,
       latencyMs: Date.now() - start,
+      promptTokens: Math.ceil(JSON.stringify(messages).length / 4),
+      completionTokens: Math.ceil(fallbackOutput.length / 4),
     };
   }
 }
@@ -66,6 +76,8 @@ export interface OrchestrationResult {
   finalConfidence: number;
   latencyMs: number;
   pythonLog: string;
+  promptTokens: number;
+  completionTokens: number;
 }
 
 // Orquestador: decide qué agentes corren, paraleliza, evalúa y sintetiza
@@ -107,28 +119,41 @@ export async function orchestrate(
       agents.map((a) => specialized(a.name, a.role, question, apiKey, effectiveProvider))
     );
 
+    let promptTokens = results.reduce((s, r) => s + r.promptTokens, 0);
+    let completionTokens = results.reduce((s, r) => s + r.completionTokens, 0);
+
     // Evaluación: confianza final = la más baja (enfoque conservador)
     const finalConfidence = Number(Math.min(...results.map((r) => r.confidence)).toFixed(2));
 
     const synStart = Date.now();
     let summary = "";
+    const synMessages = [
+      {
+        role: "system",
+        content:
+          "Sos el sintetizador del sistema multiagente. Combiná los resultados de los agentes especializados en una respuesta única, estructurada, coherente y accionable.",
+      },
+      {
+        role: "user",
+        content: `Pregunta original: ${question}\n\n` + results.map((r) => `[Agente ${r.agent} - Confianza: ${r.confidence}]\n${r.output}`).join("\n\n"),
+      },
+    ];
+
     try {
       const summaryRes = await chatCompletion(config, {
-        messages: [
-          {
-            role: "system",
-            content:
-              "Sos el sintetizador del sistema multiagente. Combiná los resultados de los agentes especializados en una respuesta única, estructurada, coherente y accionable.",
-          },
-          {
-            role: "user",
-            content: `Pregunta original: ${question}\n\n` + results.map((r) => `[Agente ${r.agent} - Confianza: ${r.confidence}]\n${r.output}`).join("\n\n"),
-          },
-        ],
+        messages: synMessages,
       });
       summary = summaryRes.choices[0]?.message.content ?? "";
+
+      const usage = summaryRes?.usage;
+      if (usage?.prompt_tokens) {
+        promptTokens += usage.prompt_tokens;
+        completionTokens += usage.completion_tokens || 0;
+      }
     } catch {
       summary = `Síntesis Multiagente:\n\n1. Aspectos de Arquitectura:\n${results[0].output}\n\n2. Aspectos de Seguridad:\n${results[1].output}`;
+      promptTokens += Math.ceil(JSON.stringify(synMessages).length / 4);
+      completionTokens += Math.ceil(summary.length / 4);
     }
 
     const synLatency = Date.now() - synStart;
@@ -144,13 +169,13 @@ export async function orchestrate(
     results.forEach((r, idx) => {
       const isLast = idx === results.length - 1;
       const branch = isLast ? "└─>" : "├─>";
-      logLines.push(`  ${branch} [Agent: ${r.agent.padEnd(12)}] Confidence: ${r.confidence.toFixed(2)} | Latency: ${r.latencyMs}ms`);
+      logLines.push(`  ${branch} [Agent: ${r.agent.padEnd(12)}] Confidence: ${r.confidence.toFixed(2)} | Tokens: ${r.promptTokens} in / ${r.completionTokens} out | Latency: ${r.latencyMs}ms`);
       logLines.push(`  ${isLast ? "   " : "│  "} Output: ${r.output.slice(0, 100)}...`);
     });
 
     logLines.push(`--------------------------------------------------------------------------------`);
     logLines.push(`[Evaluator Gate] Final Min Confidence: ${finalConfidence.toFixed(2)} (Threshold: 0.70 -> PASS)`);
-    logLines.push(`[Synthesizer Node] Combined viewpoints into single actionable plan | Latency: ${synLatency}ms`);
+    logLines.push(`[Synthesizer Node] Combined viewpoints into single actionable plan | Tokens in: ${promptTokens} | out: ${completionTokens} | Latency: ${synLatency}ms`);
     logLines.push(`[Orchestration Summary] Status: 200 OK | Total Time: ${totalLatencyMs}ms`);
 
     return {
@@ -159,6 +184,8 @@ export async function orchestrate(
       finalConfidence,
       latencyMs: totalLatencyMs,
       pythonLog: logLines.join("\n"),
+      promptTokens,
+      completionTokens,
     };
   })();
 
