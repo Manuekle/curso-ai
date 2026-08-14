@@ -5,7 +5,7 @@ import "dotenv/config";
 import express from "express";
 import multer from "multer";
 import { runAgent } from "./agent.js";
-import { ask, indexDocument, store, cosine, embed, userCanAccess, resetStore } from "./rag.js";
+import { ask, indexDocument, store, cosine, embed, userCanAccess, resetStore, chunkText } from "./rag.js";
 import { orchestrate } from "./orchestrator.js";
 import { extractText } from "./extract.js";
 import { chatCompletion } from "./llm.js";
@@ -174,26 +174,44 @@ app.post("/api/rag/index", async (req, res) => {
 });
 
 // ── RAG: indexar ARCHIVO real (pdf/docx/xlsx/txt/md…) → extrae texto → chunks (#22, #23) ──
+// Responde NDJSON en streaming: eventos "progress" por fase/chunk + "file-done" + "result".
 app.post("/api/rag/index-file", upload.array("files", 10), async (req, res) => {
+  res.setHeader("Content-Type", "application/x-ndjson");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("X-Accel-Buffering", "no"); // desactiva buffering en proxies (Vercel/nginx)
+  const emit = (obj: unknown) => res.write(JSON.stringify(obj) + "\n");
+
   try {
     const files = req.files as Express.Multer.File[] | undefined;
-    if (!files || files.length === 0) return res.status(400).json({ error: "files requerido" });
+    if (!files || files.length === 0) {
+      emit({ type: "error", message: "files requerido" });
+      return res.end();
+    }
     const owner = (req.body?.owner as string) || "demo";
     const results: { id?: string; filename: string; chars?: number; chunks?: number; embedTokens?: number; error?: string }[] = [];
     for (const file of files) {
       const filename = file.originalname;
+      emit({ type: "progress", file: filename, phase: "extract" });
       const text = await extractText(file.buffer, filename);
       if (!text.trim()) {
         results.push({ filename, error: `Formato no soportado o sin texto extraíble: ${filename}` });
+        emit({ type: "file-done", file: filename, error: results[results.length - 1].error });
         continue;
       }
+      const total = chunkText(text).length;
+      emit({ type: "progress", file: filename, phase: "embed", total });
       const id = `file-${Date.now()}-${results.length}`;
-      const { chunks, embedTokens } = await indexDocument(id, text, owner);
+      const { chunks, embedTokens } = await indexDocument(id, text, owner, undefined, undefined, (done) => {
+        emit({ type: "progress", file: filename, phase: "embed", done, total });
+      });
       results.push({ id, filename, chars: text.length, chunks, embedTokens });
+      emit({ type: "file-done", file: filename, chunks, chars: text.length, embedTokens });
     }
-    res.json({ files: results, totalDocs: store.length });
-  } catch (err) {
-    sendError(res, err);
+    emit({ type: "result", files: results, totalDocs: store.length });
+    res.end();
+  } catch (err: any) {
+    emit({ type: "error", message: err?.message || "Error desconocido en el servidor" });
+    res.end();
   }
 });
 

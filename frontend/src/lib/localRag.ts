@@ -141,9 +141,9 @@ export function getChatModel(provider: LocalProvider): string {
     case "openrouter":
       return "google/gemma-4-26b-a4b-it:free"
     case "groq":
-      return "llama-3.1-70b-versatile"
+      return "openai/gpt-oss-120b"
     case "gemini":
-      return "gemini-1.5-flash"
+      return "gemini-2.5-flash"
   }
 }
 
@@ -152,10 +152,10 @@ export function getEmbeddingModel(provider: LocalProvider): string {
     case "openai":
       return "text-embedding-3-small"
     case "gemini":
-      return "text-embedding-004"
+      return "gemini-embedding-001"
     case "openrouter":
     case "groq": // groq no tiene embeddings: usa OpenRouter
-      return "nvidia/nemotron-3-embed-1b:free"
+      return "nvidia/nemotron-3-embed-1b-20260716:free"
   }
 }
 
@@ -179,7 +179,7 @@ function resolveEmbedding(keys: LocalApiKeys, provider: LocalProvider): EmbedRes
       break
     case "gemini":
       if (keys.gemini?.trim())
-        return { mode: "provider", url: "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent", key: keys.gemini.trim(), model: getEmbeddingModel("gemini"), provider: "gemini" }
+        return { mode: "provider", url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent", key: keys.gemini.trim(), model: getEmbeddingModel("gemini"), provider: "gemini" }
       break
     case "groq":
       // Groq no tiene API de embeddings: usar OpenRouter si hay key (igual que el server).
@@ -217,20 +217,32 @@ async function fetchEmbedding(resolved: EmbedResolved, text: string): Promise<{ 
 export async function embedTexts(
   texts: string[],
   keys: LocalApiKeys,
-  provider: LocalProvider
+  provider: LocalProvider,
+  onProgress?: (done: number, total: number) => void
 ): Promise<{ vectors: number[][]; mode: "provider" | "local" }> {
   const resolved = resolveEmbedding(keys, provider)
   const results: number[][] = []
   let finalMode: "provider" | "local" = "local"
-  for (const text of texts) {
-    try {
-      const r = await fetchEmbedding(resolved, text)
-      results.push(r.vector)
-      if (r.mode === "provider") finalMode = "provider"
-    } catch {
-      results.push(generateLocalEmbedding(text))
+  // Embeddings en paralelo (límite 3): el loop secuencial hacía 1 HTTP por chunk.
+  const CONCURRENCY = 3
+  let cursor = 0
+  let done = 0
+  async function worker() {
+    while (true) {
+      const i = cursor++
+      if (i >= texts.length) return
+      try {
+        const r = await fetchEmbedding(resolved, texts[i])
+        results[i] = r.vector
+        if (r.mode === "provider") finalMode = "provider"
+      } catch {
+        results[i] = generateLocalEmbedding(texts[i])
+      }
+      done++
+      onProgress?.(done, texts.length)
     }
   }
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, texts.length) }, () => worker()))
   return { vectors: results, mode: finalMode }
 }
 
@@ -239,10 +251,11 @@ export async function indexText(
   name: string,
   text: string,
   keys: LocalApiKeys,
-  provider: LocalProvider
+  provider: LocalProvider,
+  onProgress?: (done: number, total: number) => void
 ): Promise<{ chunks: number; mode: "provider" | "local" }> {
   const chunks = chunkText(text)
-  const { vectors, mode } = await embedTexts(chunks, keys, provider)
+  const { vectors, mode } = await embedTexts(chunks, keys, provider, onProgress)
   const docs = loadStore()
   chunks.forEach((c, i) => docs.push({ id: `${name}:${i}`, text: c, owner: "local", vector: vectors[i] }))
   saveStore(docs)
@@ -295,7 +308,7 @@ function resolveChat(keys: LocalApiKeys, provider: LocalProvider): { url: string
     case "groq":
       return { url: "https://api.groq.com/openai/v1/chat/completions", key: keys.groq.trim(), model: getChatModel("groq"), provider: "groq" }
     case "gemini":
-      return { url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent", key: keys.gemini.trim(), model: getChatModel("gemini"), provider: "gemini" }
+      return { url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent", key: keys.gemini.trim(), model: getChatModel("gemini"), provider: "gemini" }
   }
 }
 

@@ -38,6 +38,8 @@ type UploadItem = {
   file: File
   state: "pending" | "uploading" | "done" | "error"
   msg?: string
+  phase?: "extract" | "embed"
+  progress?: { done: number; total: number }
 }
 
 interface ScoredHit {
@@ -415,7 +417,9 @@ export function Playground() {
 
   async function uploadFiles(items: UploadItem[]) {
     for (const item of items) {
-      setUploads((prev) => prev.map((u) => (u.file === item.file ? { ...u, state: "uploading" } : u)))
+      setUploads((prev) =>
+        prev.map((u) => (u.file === item.file ? { ...u, state: "uploading", phase: "extract" } : u))
+      )
       try {
         const fd = new FormData()
         fd.append("files", item.file)
@@ -424,9 +428,50 @@ export function Playground() {
           method: "POST",
           body: fd,
         })
-        const data = await res.json()
-        if (!res.ok) throw new Error(data.error)
-        const r = data.files?.[0]
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          throw new Error(data.error || `HTTP ${res.status}`)
+        }
+        if (!res.body) throw new Error("Respuesta sin stream")
+        const reader = res.body.getReader()
+        const decoder = new TextDecoder()
+        let r: { error?: string; chunks?: number; chars?: number; embedTokens?: number } | null = null
+        let buffer = ""
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split("\n")
+          buffer = lines.pop() ?? ""
+          for (const line of lines) {
+            if (!line.trim()) continue
+            let msg: any
+            try {
+              msg = JSON.parse(line)
+            } catch {
+              continue
+            }
+            if (msg.type === "progress" && msg.file === item.file.name) {
+              setUploads((prev) =>
+                prev.map((u) =>
+                  u.file === item.file
+                    ? {
+                        ...u,
+                        phase: msg.phase,
+                        progress: msg.total ? { done: msg.done ?? 0, total: msg.total } : undefined,
+                      }
+                    : u
+                )
+              )
+            } else if (msg.type === "file-done" && msg.file === item.file.name) {
+              r = msg
+            } else if (msg.type === "result") {
+              r = msg.files?.[0] ?? r
+            } else if (msg.type === "error") {
+              throw new Error(msg.message || "Error del servidor")
+            }
+          }
+        }
         if (!r) throw new Error("Respuesta vacía del servidor")
         setUploads((prev) =>
           prev.map((u) =>
@@ -1173,10 +1218,34 @@ export function Playground() {
                           <p className="shrink-0 text-[11px] text-muted-foreground">{formatSize(u.file.size)}</p>
                         </div>
                         <div className="flex items-center gap-2">
-                          {u.state === "uploading" && (
-                            <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
-                              <div className="h-full w-1/2 animate-pulse rounded-full bg-ring" />
-                            </div>
+                          {u.state === "uploading" && u.phase !== "embed" && (
+                            <>
+                              <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
+                                <div className="h-full w-1/2 animate-pulse rounded-full bg-ring" />
+                              </div>
+                              <span className="shrink-0 text-[11px] text-muted-foreground">Extrayendo texto…</span>
+                            </>
+                          )}
+                          {u.state === "uploading" && u.phase === "embed" && (
+                            <>
+                              <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
+                                <div
+                                  className="h-full rounded-full bg-ring transition-[width] duration-300"
+                                  style={{
+                                    width:
+                                      u.progress && u.progress.total > 0
+                                        ? `${Math.round((u.progress.done / u.progress.total) * 100)}%`
+                                        : "0%",
+                                  }}
+                                />
+                              </div>
+                              <span className="shrink-0 text-[11px] text-muted-foreground">
+                                {u.progress?.done ?? 0}/{u.progress?.total ?? "…"}
+                                {u.progress && u.progress.total > 0
+                                  ? ` · ${Math.round((u.progress.done / u.progress.total) * 100)}%`
+                                  : ""}
+                              </span>
+                            </>
                           )}
                           {u.state === "done" && <p className="text-[11px] text-muted-foreground">{u.msg}</p>}
                           {u.state === "error" && (

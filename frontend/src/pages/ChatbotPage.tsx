@@ -50,6 +50,8 @@ type UploadItem = {
   file: File
   state: UploadState
   msg?: string
+  phase?: "extract" | "embed"
+  progress?: { done: number; total: number }
 }
 
 const HISTORY_KEY = "chatbot-history"
@@ -172,11 +174,15 @@ export function ChatbotPage() {
 
   async function processUploads(items: UploadItem[]) {
     for (const item of items) {
-      setUploads((prev) => prev.map((u) => (u.file === item.file ? { ...u, state: "processing" } : u)))
+      setUploads((prev) => prev.map((u) => (u.file === item.file ? { ...u, state: "processing", phase: "extract" } : u)))
       try {
         const { text, name } = await extractText(item.file)
         if (!text.trim()) throw new Error("sin texto extraído")
-        const res = await indexText(name, text, apiKeys, activeProvider)
+        const res = await indexText(name, text, apiKeys, activeProvider, (done, total) => {
+          setUploads((prev) =>
+            prev.map((u) => (u.file === item.file ? { ...u, phase: "embed", progress: { done, total } } : u))
+          )
+        })
         setMode(res.mode)
         setDocs(loadStore())
         setUploads((prev) =>
@@ -460,10 +466,34 @@ export function ChatbotPage() {
                       <p className="shrink-0 text-[11px] text-muted-foreground">{formatSize(u.file.size)}</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      {u.state === "processing" && (
-                        <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
-                          <div className="h-full w-1/2 animate-pulse rounded-full bg-ring" />
-                        </div>
+                      {u.state === "processing" && u.phase !== "embed" && (
+                        <>
+                          <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
+                            <div className="h-full w-1/2 animate-pulse rounded-full bg-ring" />
+                          </div>
+                          <span className="shrink-0 text-[11px] text-muted-foreground">Extrayendo texto…</span>
+                        </>
+                      )}
+                      {u.state === "processing" && u.phase === "embed" && (
+                        <>
+                          <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
+                            <div
+                              className="h-full rounded-full bg-ring transition-[width] duration-300"
+                              style={{
+                                width:
+                                  u.progress && u.progress.total > 0
+                                    ? `${Math.round((u.progress.done / u.progress.total) * 100)}%`
+                                    : "0%",
+                              }}
+                            />
+                          </div>
+                          <span className="shrink-0 text-[11px] text-muted-foreground">
+                            {u.progress?.done ?? 0}/{u.progress?.total ?? "…"}
+                            {u.progress && u.progress.total > 0
+                              ? ` · ${Math.round((u.progress.done / u.progress.total) * 100)}%`
+                              : ""}
+                          </span>
+                        </>
                       )}
                       {u.state === "done" && <p className="text-[11px] text-muted-foreground">{u.msg}</p>}
                       {u.state === "error" && (

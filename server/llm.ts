@@ -79,8 +79,8 @@ export function getModel(config: LLMConfig): string {
   if (config.model) return config.model;
   const provider = config.provider || getDefaultProvider();
   switch (provider) {
-    case "groq": return "llama-3.1-70b-versatile";
-    case "gemini": return "gemini-1.5-flash";
+    case "groq": return "openai/gpt-oss-120b";
+    case "gemini": return "gemini-2.5-flash";
     case "openrouter": return process.env.OPENROUTER_MODEL ?? "google/gemma-4-26b-a4b-it:free";
     default: return process.env.OPENAI_MODEL ?? "gpt-4o-mini";
   }
@@ -370,9 +370,9 @@ export async function createEmbedding(
     const client = getClient({ provider: providerForEmbedding, apiKey: key });
 
     if (providerForEmbedding === "gemini") {
-      const model = client.getGenerativeModel({ model: "text-embedding-004" });
+      const model = client.getGenerativeModel({ model: "gemini-embedding-001" });
       const result = await model.embedContent(text);
-      lastEmbeddingModel = "text-embedding-004";
+      lastEmbeddingModel = "gemini-embedding-001";
       return (
         markEmbeddingMode("provider"),
         {
@@ -383,7 +383,7 @@ export async function createEmbedding(
     }
 
     if (providerForEmbedding === "openrouter") {
-      const model = process.env.OPENROUTER_EMBEDDING_MODEL ?? "nvidia/nemotron-3-embed-1b:free";
+      const model = process.env.OPENROUTER_EMBEDDING_MODEL ?? "nvidia/nemotron-3-embed-1b-20260716:free";
       const response = await client.embeddings.create({
         model,
         input: text,

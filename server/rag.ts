@@ -18,19 +18,40 @@ export function chunkText(text: string, size = 800, overlap = 100): string[] {
 export async function embedWithTokens(
   texts: string[],
   apiKey?: string,
-  provider?: Provider
+  provider?: Provider,
+  onProgress?: (done: number, total: number) => void
 ): Promise<{ vectors: number[][]; tokens: number }> {
   const activeProvider = provider || getDefaultProvider();
   const config = { provider: activeProvider, apiKey };
-  const results = await Promise.all(texts.map((text) => createEmbedding(config, text)));
+  // Pool con límite de concurrencia: Promise.all sobre todo el lote podía
+  // saturar rate limits y no permitía reportar progreso por chunk.
+  const CONCURRENCY = 5;
+  const results: { vector: number[]; tokens: number }[] = [];
+  let cursor = 0;
+  let done = 0;
+  async function worker() {
+    while (true) {
+      const i = cursor++;
+      if (i >= texts.length) return;
+      results[i] = await createEmbedding(config, texts[i]);
+      done++;
+      onProgress?.(done, texts.length);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, texts.length) }, () => worker()));
   return {
     vectors: results.map((r) => r.vector),
     tokens: results.reduce((s, r) => s + r.tokens, 0),
   };
 }
 
-export async function embed(texts: string[], apiKey?: string, provider?: Provider): Promise<number[][]> {
-  return (await embedWithTokens(texts, apiKey, provider)).vectors;
+export async function embed(
+  texts: string[],
+  apiKey?: string,
+  provider?: Provider,
+  onProgress?: (done: number, total: number) => void
+): Promise<number[][]> {
+  return (await embedWithTokens(texts, apiKey, provider, onProgress)).vectors;
 }
 
 // ── 3. VECTOR STORE en memoria (#25) ──
@@ -47,10 +68,11 @@ export async function indexDocument(
   text: string,
   owner: string,
   apiKey?: string,
-  provider?: Provider
+  provider?: Provider,
+  onProgress?: (done: number, total: number) => void
 ): Promise<{ chunks: number; embedTokens: number }> {
   const chunks = chunkText(text);
-  const { vectors, tokens } = await embedWithTokens(chunks, apiKey, provider);
+  const { vectors, tokens } = await embedWithTokens(chunks, apiKey, provider, onProgress);
   chunks.forEach((c, i) => store.push({ id: `${id}:${i}`, text: c, owner, vector: vectors[i] }));
   saveStore(store);
   return { chunks: chunks.length, embedTokens: tokens };
