@@ -108,7 +108,7 @@ export function LessonShell({
       {activeKey === "preview" && (
         <div className="anim-tab mt-6">
           <Card className="rounded-[22px]">
-            <CardContent className="flex flex-col gap-4 px-8 md:px-10">
+            <CardContent className="flex flex-col gap-4 px-5 md:px-10">
               <div className="flex flex-col gap-3 text-base leading-relaxed text-muted-foreground [&_strong]:font-normal [&_strong]:text-foreground">
                 {intro}
               </div>
@@ -127,7 +127,7 @@ export function LessonShell({
       {activeKey === "interview" && (
         <div className="anim-tab mt-6">
           <Card className="rounded-[22px]">
-            <CardContent className="flex flex-col gap-3 px-8 md:px-10">
+            <CardContent className="flex flex-col gap-3 px-5 md:px-10">
               <p className="font-mono text-xs text-muted-foreground">Pregunta de entrevista</p>
               <p className="text-[15.5px] leading-relaxed">{interview}</p>
               {solution && (

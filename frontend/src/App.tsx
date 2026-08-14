@@ -328,7 +328,7 @@ function Header({ onMenu, onSearch }: HeaderProps) {
 
   return (
     <header className="bg-background">
-      <div className="mx-auto flex h-[72px] w-full max-w-[1560px] items-center gap-4 px-8 md:px-16">
+      <div className="mx-auto flex h-[72px] w-full max-w-[1560px] items-center gap-4 px-4 sm:px-8 md:px-16">
         <Button
           variant="ghost"
           size="icon-sm"
@@ -499,15 +499,15 @@ function AppShell() {
         onSearch={() => setSearchOpen(true)}
       />
 
-      <div className="mx-auto flex w-full max-w-[1560px] flex-1 flex-col md:flex-row md:gap-10 md:px-16">
+      <div className="mx-auto flex w-full max-w-[1560px] flex-1 flex-col px-4 sm:px-8 md:flex-row md:gap-10 md:px-16">
         <aside className="hidden shrink-0 md:block md:sticky md:top-0 md:h-svh md:w-[220px] md:self-start md:overflow-y-auto md:py-14">
           <NavLists />
         </aside>
 
-        <main className="min-w-0 flex-1 px-8 md:px-0">
+        <main className="min-w-0 flex-1 px-4 sm:px-8 md:px-0">
           <div
             className={cn(
-              "mx-auto w-full pt-14 pb-32",
+              "mx-auto w-full pt-10 pb-24 sm:pt-14 sm:pb-32",
               location.pathname.startsWith("/docs") ? "max-w-[1240px]" : "max-w-[920px]"
             )}
           >
@@ -517,7 +517,7 @@ function AppShell() {
       </div>
 
       <footer>
-        <div className="mx-auto flex w-full max-w-[1560px] flex-col items-center justify-between gap-4 px-8 py-10 sm:flex-row md:px-16">
+        <div className="mx-auto flex w-full max-w-[1560px] flex-col items-center justify-between gap-4 px-4 py-10 sm:flex-row sm:px-8 md:px-16">
           <NavLink to="/" className="flex items-center gap-2.5">
             <img src="/logo.png" alt="Logo Curso AI" className="size-7 rounded-[10px] object-cover" />
             <span className="text-[13px] tracking-[-0.005em]">Curso AI</span>

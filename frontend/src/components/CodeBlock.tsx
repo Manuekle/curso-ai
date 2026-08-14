@@ -59,7 +59,7 @@ export function CodeBlock({ label = "", code, className }: { label?: string; cod
 
   return (
     <div className={cn("relative rounded-[22px] bg-card ring-1 ring-foreground/10 flex flex-col", className)}>
-      <p className="absolute top-[18px] left-8 font-mono text-xs text-muted-foreground">{label}</p>
+      <p className="absolute top-[18px] left-8 max-w-[calc(100%-5.5rem)] truncate font-mono text-xs text-muted-foreground">{label}</p>
       <Button
         variant="ghost"
         size="icon-sm"
@@ -74,7 +74,7 @@ export function CodeBlock({ label = "", code, className }: { label?: string; cod
           {copied ? <RiCheckLine className="size-4 text-primary" /> : <RiFileCopyLine className="size-4" />}
         </span>
       </Button>
-      <pre className="max-h-96 overflow-auto p-6 pt-[60px] font-mono text-xs leading-[1.7] whitespace-pre text-foreground/80 md:p-8 md:pt-[64px] flex-1">
+      <pre className="max-h-96 overflow-auto p-4 pt-[52px] font-mono text-xs leading-[1.7] whitespace-pre text-foreground/80 md:p-8 md:pt-[64px] flex-1">
         {code}
       </pre>
     </div>
