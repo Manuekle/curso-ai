@@ -1,0 +1,21 @@
+POLÍTICA DE SEGURIDAD DE LA INFORMACIÓN
+
+Contraseñas:
+- Deben tener al menos 12 caracteres: mayúsculas, minúsculas, números y símbolos.
+- Deben rotarse cada 90 días.
+- Está prohibido compartir credenciales o usar cuentas compartidas.
+- No escribir contraseñas en notas adhesivas ni documentos sin cifrar.
+
+Acceso:
+- Autenticación de dos factores (2FA) obligatoria en sistemas internos.
+- Acceso a datos sensibles bajo principio de mínimo privilegio.
+- El acceso se audita trimestralmente.
+
+Incidentes:
+- Cualquier incidente de seguridad se reporta dentro de las 2 horas al equipo de IT.
+- Los datos personales de clientes se cifran en reposo y en tránsito.
+
+Preguntas de ejemplo:
+- ¿Cada cuánto se rotan las contraseñas?
+- ¿Qué requisitos debe cumplir una contraseña?
+- ¿Es obligatorio el 2FA?

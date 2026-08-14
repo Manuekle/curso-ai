@@ -1,0 +1,23 @@
+INFORMACIÓN PÚBLICA DE PROVEEDORES
+
+Proveedor principal de papelería: Papelera Centro S.A.
+  - contacto: ventas@papeleracentro.com
+  - teléfono: +54 11 4321-0099
+
+Proveedor de tecnología: Tecnored S.A.
+  - contacto: hola@tecnored.com
+  - teléfono: +54 11 4789-2211
+
+Proveedor de limpieza: Servilimp S.R.L.
+  - contacto: info@servilimp.com
+  - teléfono: +54 11 4655-7788
+
+Reglas de compra:
+- Los pedidos a proveedores se hacen con 15 días de anticipación.
+- Cada pedido se registra en el sistema de compras con su ID.
+- Los proveedores deben presentar factura electrónica.
+
+Preguntas de ejemplo:
+- ¿Quién es el proveedor de tecnología?
+- ¿Cuál es el teléfono de Papelera Centro?
+- ¿Con cuánta anticipación se hacen los pedidos?

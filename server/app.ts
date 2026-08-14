@@ -5,11 +5,12 @@ import "dotenv/config";
 import express from "express";
 import multer from "multer";
 import { runAgent } from "./agent.js";
-import { ask, indexDocument, store, cosine, embed, userCanAccess } from "./rag.js";
+import { ask, indexDocument, store, cosine, embed, userCanAccess, resetStore } from "./rag.js";
 import { orchestrate } from "./orchestrator.js";
 import { extractText } from "./extract.js";
 import { chatCompletion } from "./llm.js";
-import { seedDocs } from "./seed.js";
+import { seedAll } from "./seed.js";
+import { saveStore } from "./store-persist.js";
 
 export const app = express();
 app.use(express.json({ limit: "2mb" }));
@@ -62,8 +63,9 @@ app.get("/api/rag/store", (_req, res) => {
 
 app.post("/api/rag/reset-store", async (_req, res) => {
   try {
-    store.length = 0;
-    await seedDocs();
+    await resetStore();
+    await seedAll();
+    saveStore(store);
     res.json({ ok: true, totalDocs: store.length });
   } catch (err) {
     sendError(res, err);
@@ -75,6 +77,7 @@ app.post("/api/rag/delete-chunk", (req, res) => {
   const idx = store.findIndex((d) => d.id === id);
   if (idx >= 0) {
     store.splice(idx, 1);
+    saveStore(store);
     res.json({ ok: true, remaining: store.length });
   } else {
     res.status(404).json({ error: "Chunk no encontrado" });

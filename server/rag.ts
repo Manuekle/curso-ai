@@ -2,7 +2,8 @@
 // RAG completo (doc #22-28): chunk → embedding → vector store → retrieve → filtro umbral → filtro permisos → LLM.
 // Store en memoria (local, sin infra). Para prod: pgvector / Pinecone / Qdrant (#25).
 
-import { chatCompletion, createEmbedding, getDefaultProvider, Provider } from "./llm.js";
+import { chatCompletion, createEmbedding, getDefaultProvider, getLastEmbeddingMode, Provider } from "./llm.js";
+import { loadStore, saveStore, StoredChunk } from "./store-persist.js";
 
 // ── 1. CHUNKING (#23) ──
 export function chunkText(text: string, size = 800, overlap = 100): string[] {
@@ -39,7 +40,24 @@ export async function indexDocument(
   const chunks = chunkText(text);
   const vectors = await embed(chunks, apiKey, provider);
   chunks.forEach((c, i) => store.push({ id: `${id}:${i}`, text: c, owner, vector: vectors[i] }));
+  saveStore(store);
   return chunks.length;
+}
+
+// Hidrata la store desde Vercel Blob (persistencia entre instancias serverless).
+export async function hydrateStoreFromPersistence(): Promise<number> {
+  const saved = await loadStore();
+  if (!saved || saved.length === 0) return 0;
+  store.length = 0;
+  store.push(...saved);
+  console.log(`store-persist: cargados ${saved.length} chunks desde Blob`);
+  return saved.length;
+}
+
+// Reset completo: limpia memoria y persistencia.
+export async function resetStore(): Promise<void> {
+  store.length = 0;
+  saveStore(store);
 }
 
 // ── 4. BÚSQUEDA VECTORIAL (cosine) ──
@@ -75,7 +93,7 @@ export function searchScored(queryVec: number[], k = 4, threshold = 0.20): Score
 // ── 0. AUTORIZACIÓN (doc #29) — quién puede ver qué ──
 const ACL: Record<string, string[]> = {
   admin: ["*"], // admin ve todo
-  demo: ["rh", "inventario"],
+  demo: ["rh", "inventario", "publico"], // demo NO ve "it" (datos sensibles)
 };
 
 export function userCanAccess(user: string, owner: string): boolean {
@@ -105,6 +123,8 @@ export interface RagResult {
   latencyMs: number;
   scoredHits: ScoredHit[];
   pythonLog: string;
+  embeddingMode: string;
+  llmNote?: string;
 }
 
 export interface AskOptions {
@@ -127,6 +147,7 @@ export async function ask(
   const [qVec] = await embed([question], apiKey, effectiveProvider);
   const embTime = Date.now() - startTime;
   const vectorDim = qVec.length;
+  const embeddingMode = getLastEmbeddingMode();
 
   const candidates = searchScored(qVec, Math.max(topK, 5), threshold);
   const scoredHits: ScoredHit[] = candidates.map(({ doc, score, passedThreshold }) => ({
@@ -143,35 +164,59 @@ export async function ask(
 
   let answer = "";
   let llmTime = 0;
+  let llmNote = "";
 
-  if (passedThresholdCandidates.length === 0) {
-    const highestScore = candidates[0]?.score ?? 0;
-    answer = `No se encontraron documentos relevantes para tu consulta con el umbral actual (${threshold}). La máxima similitud encontrada fue de ${highestScore}. Probá reducir el umbral de similitud o reformular la pregunta.`;
+  if (store.length === 0) {
+    answer =
+      `La base vectorial está vacía (0 documentos indexados). ` +
+      `Indexá un documento de prueba (txt, pdf…) y volvé a preguntar.`;
+  } else if (passedThresholdCandidates.length === 0) {
+    const topScores = candidates
+      .slice(0, 3)
+      .map((c) => `${c.doc.id} (similitud ${c.score})`)
+      .join(", ");
+    answer =
+      `Ningún documento alcanzó el umbral de similitud (${threshold}). ` +
+      `Los más cercanos fueron: ${topScores}. ` +
+      `Probá bajar el umbral o reformular la pregunta.`;
   } else if (allowed.length === 0) {
     answer = `Se encontraron documentos relacionados pero no tienes permisos de acceso (usuario: "${user}"). Documentos bloqueados por política de seguridad: ${passedThresholdCandidates.map((c) => `[${c.doc.id} - owner: ${c.doc.owner}]`).join(", ")}.`;
   } else {
     const context = allowed.map((c) => `[fuente: ${c.doc.id}]\n${c.doc.text}`).join("\n\n---\n\n");
     const llmStart = Date.now();
 
-    const res = await chatCompletion(
-      { provider: effectiveProvider, apiKey },
-      {
-        temperature: 0,
-        messages: [
-          {
-            role: "system",
-            content:
-              "Respondé SOLO con base en el contexto dado, en español. " +
-              "Mencioná la fuente citando [fuente: ...]. " +
-              "Regla crítica (#66): si el contexto no responde la pregunta, decí 'No encontré suficiente información para responder con seguridad.' " +
-              "No inventes datos.",
-          },
-          { role: "user", content: `Contexto:\n${context}\n\nPregunta: ${question}` },
-        ],
-      }
-    );
-    llmTime = Date.now() - llmStart;
-    answer = res.choices[0]?.message.content ?? "";
+    try {
+      const res = await chatCompletion(
+        { provider: effectiveProvider, apiKey },
+        {
+          temperature: 0,
+          messages: [
+            {
+              role: "system",
+              content:
+                "Respondé SOLO con base en el contexto dado, en español. " +
+                "Mencioná la fuente citando [fuente: ...]. " +
+                "Regla crítica (#66): si el contexto no responde la pregunta, decí 'No encontré suficiente información para responder con seguridad.' " +
+                "No inventes datos.",
+            },
+            { role: "user", content: `Contexto:\n${context}\n\nPregunta: ${question}` },
+          ],
+        }
+      );
+      llmTime = Date.now() - llmStart;
+      answer = res.choices[0]?.message.content ?? "";
+    } catch (llmErr: any) {
+      llmTime = Date.now() - llmStart;
+      // Modo local: sin LLM disponible la práctica sigue funcionando con las fuentes recuperadas.
+      llmNote = `LLM sin API válida: ${llmErr?.message ?? String(llmErr)}`;
+      const excerpts = allowed
+        .map((c) => `[fuente: ${c.doc.id}]\n${c.doc.text.slice(0, 300)}`)
+        .join("\n\n---\n\n");
+      answer =
+        `[Modo local] El modelo de IA no está disponible (${llmErr?.code ?? "LLM_ERROR"}). ` +
+        `Estos son los documentos recuperados que responden tu consulta:\n\n${excerpts}\n\n` +
+        `Configurá una API key válida para obtener respuestas generadas por el modelo.`;
+    }
   }
 
   const totalLatencyMs = Date.now() - startTime;
@@ -179,7 +224,7 @@ export async function ask(
   // Generación de log estilo terminal de Python (LangChain / LlamaIndex / Rich logger)
   const logLines: string[] = [
     `[AI Pipeline] Mode: RAG | Provider: ${effectiveProvider} | Vector Store: InMemory (Docs: ${store.length})`,
-    `[Embedding] Query Vector: ${vectorDim} dims | Latency: ${embTime}ms`,
+    `[Embedding] Query Vector: ${vectorDim} dims | Modo: ${embeddingMode === "local" ? "LOCAL (sin API válida)" : "proveedor"} | Latency: ${embTime}ms`,
     `[Vector Search] Top-${topK} candidates | Similitud Coseno | Umbral (Threshold): ${threshold.toFixed(2)}`,
     `--------------------------------------------------------------------------------`,
   ];
@@ -204,6 +249,9 @@ export async function ask(
   if (llmTime > 0) {
     logLines.push(`[LLM Generation] Temperature: 0.0 | Latency: ${llmTime}ms`);
   }
+  if (llmNote) {
+    logLines.push(`[LLM Generation] No disponible: ${llmNote.slice(0, 120)}`);
+  }
   logLines.push(`[Execution Summary] Total Latency: ${totalLatencyMs}ms | Status: 200 OK | Fuentes: [${allowed.map((c) => c.doc.id).join(", ")}]`);
 
   const pythonLog = logLines.join("\n");
@@ -219,6 +267,8 @@ export async function ask(
     latencyMs: totalLatencyMs,
     scoredHits,
     pythonLog,
+    embeddingMode,
+    llmNote: llmNote || undefined,
   };
 }
 

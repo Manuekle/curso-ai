@@ -256,7 +256,7 @@ export function AgentCreator() {
 
       <CardContent className="flex flex-col gap-5 px-6 sm:px-8">
         {/* Proveedor y Gestor de API Keys (.env local) */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 rounded-xl border border-border/70 bg-card p-3 shadow-2xs">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-medium text-muted-foreground ml-0.5">Proveedor:</span>
             <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-full shadow-xs">
@@ -336,7 +336,6 @@ export function AgentCreator() {
             {/* SECCIÓN 1: IDENTIDAD */}
             <div className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card/60 p-4">
               <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                <RiFlashlightLine className="size-4 text-primary" />
                 <span>1. Identidad & Modelo</span>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -382,7 +381,6 @@ export function AgentCreator() {
             {/* SECCIÓN 2: CONTEXTO Y LÍMITES */}
             <div className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card/60 p-4">
               <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                <RiShieldCheckLine className="size-4 text-emerald-500" />
                 <span>2. Contexto & Guardrails (#13, #19, #66)</span>
               </div>
               <div className="flex flex-col gap-3">
@@ -411,8 +409,7 @@ export function AgentCreator() {
 
             {/* SECCIÓN 3: SALIDA Y TOOLS */}
             <div className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card/60 p-4">
-              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                <RiToolsLine className="size-4 text-primary" />
+              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">               
                 <span>3. Tools, Datos & Formato (#4, #6)</span>
               </div>
               <div className="flex flex-col gap-3">

@@ -65,8 +65,27 @@ export function SeguridadLesson() {
     setError("")
     setResult(null)
     try {
-      const res = await fetch("/api/demo/injection", { method: "POST" })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const apiKeys = JSON.parse(localStorage.getItem("api-keys") || "{}")
+      let activeProvider = (localStorage.getItem("active-provider") as string) || "openrouter"
+      let apiKey = apiKeys[activeProvider]
+      if (!apiKey?.trim()) {
+        const first = (["openrouter", "openai", "gemini", "groq"] as const).find((p) => apiKeys[p]?.trim())
+        if (first) {
+          activeProvider = first
+          apiKey = apiKeys[first]
+        }
+      }
+      const config = { provider: activeProvider, apiKey }
+
+      const res = await fetch("/api/demo/injection", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ config }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => null)
+        throw new Error(body?.error ?? `HTTP ${res.status}`)
+      }
       setResult(await res.json())
     } catch (err) {
       setError((err as Error).message)

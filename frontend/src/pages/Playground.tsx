@@ -339,11 +339,22 @@ export function Playground() {
         setLatencyMs(data.latencyMs ?? 0)
       } else if (mode === "rag") {
         setAnswer(data.answer)
-        setMeta(`hits superan umbral: ${data.hits} · permitidos RBAC: ${data.allowedHits} · fuentes: ${data.sources.join(", ")} · latencia: ${data.latencyMs ?? 0}ms`)
+        setMeta(
+          `documentos relevantes: ${data.hits} (umbral ${data.threshold}) · autorizados: ${data.allowedHits} · ` +
+            `fuentes: ${data.sources.length ? data.sources.join(", ") : "ninguna"} · ` +
+            `embeddings: ${data.embeddingMode === "local" ? "modo local (sin API válida)" : "API real"} · ` +
+            `latencia: ${data.latencyMs ?? 0}ms`
+        )
         setPythonLog(data.pythonLog ?? "")
         setScoredHits(data.scoredHits ?? [])
         setLatencyMs(data.latencyMs ?? 0)
         setVectorDims(data.dimensions ?? 1536)
+        if (data.llmNote) {
+          sileo.warning({
+            title: "Modelo de IA no disponible",
+            description: data.llmNote.slice(0, 160),
+          })
+        }
       } else if (mode === "orchestrate") {
         setAnswer(data.summary)
         setMeta(`confianza final: ${data.finalConfidence} · agentes: ${data.results.length} · latencia: ${data.latencyMs ?? 0}ms`)
@@ -476,7 +487,7 @@ export function Playground() {
 
       <CardContent className="flex flex-col gap-5 px-6 sm:px-8">
         {/* Proveedor y Gestor de API Keys (.env local) */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 rounded-xl border border-border/70 bg-card p-3 shadow-2xs">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-medium text-muted-foreground ml-0.5">Proveedor:</span>
             <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-full shadow-xs">
@@ -550,8 +561,7 @@ export function Playground() {
           <div className="grid grid-cols-1 gap-4 rounded-xl border border-border/60 bg-muted/20 p-4 sm:grid-cols-3">
             <div className="flex flex-col gap-1 sm:col-span-1">
               <div className="flex items-center justify-between">
-                <Label htmlFor="threshold" className="flex items-center gap-1 text-xs font-medium">
-                  <RiFilter3Line className="h-3.5 w-3.5 text-primary" />
+                <Label htmlFor="threshold" className="flex items-center gap-1 text-xs font-medium">                  
                   Umbral (Threshold):
                 </Label>
                 <Badge variant="outline" className="font-mono text-xs font-medium">
@@ -848,7 +858,7 @@ export function Playground() {
             </Button>
 
             {pythonLog && (
-              <div className="flex items-center gap-1 rounded-lg border border-border/80 bg-muted/40 p-1">
+              <div className="flex items-center gap-1 rounded-full border border-border/80 bg-muted/40 p-1">
                 <Button
                   variant={activeTab === "result" ? "secondary" : "ghost"}
                   size="sm"

@@ -18,6 +18,28 @@ export function getDefaultProvider(): Provider {
   return "openrouter";
 }
 
+const PROVIDER_PRIORITY: Provider[] = ["openrouter", "openai", "gemini", "groq"];
+
+function hasConfiguredKey(p: Provider): boolean {
+  return Boolean(process.env[`${p.toUpperCase()}_API_KEY`]?.trim());
+}
+
+function isTransientProviderError(error: any): boolean {
+  const status = error?.status || error?.statusCode || error?.response?.status;
+  const lower = String(error?.message || "").toLowerCase();
+  return (
+    status === 401 ||
+    status === 403 ||
+    status === 429 ||
+    status === 500 ||
+    status === 502 ||
+    status === 503 ||
+    lower.includes("rate limit") ||
+    lower.includes("quota") ||
+    lower.includes("user not found")
+  );
+}
+
 // Map provider to specific client instance
 const _clients: Partial<Record<Provider, any>> = {};
 const _lastKeys: Partial<Record<Provider, string>> = {};
@@ -72,6 +94,16 @@ const STOP_WORDS = new Set([
   "cuanta", "cuantas", "cuando", "donde", "quien", "quienes", "o", "y", "a", "te",
   "me", "le", "nos", "les", "mi", "tu", "yo", "tu", "el", "ella", "ellos", "ellas"
 ]);
+
+const EMBEDDING_DIM = 1536;
+
+// Normaliza cualquier vector de embedding a 1536 dims para que el store sea
+// consistente aunque cambie el proveedor (openai/openrouter/gemini tienen dims distintas).
+function toEmbeddingDim(vec: number[], dim = EMBEDDING_DIM): number[] {
+  if (vec.length === dim) return vec;
+  if (vec.length > dim) return vec.slice(0, dim);
+  return [...vec, ...new Array(dim - vec.length).fill(0)];
+}
 
 export function generateLocalEmbedding(text: string, dim = 1536): number[] {
   const vec = new Float64Array(dim);
@@ -248,6 +280,29 @@ export async function chatCompletion(
     (enhancedErr as any).status = norm.status;
     (enhancedErr as any).originalMessage = error.message;
 
+    // Failover automático: sin apiKey explícita del usuario y el proveedor
+    // falló por key inválida, cuota o rate limit → probar los demás con key configurada.
+    if (!effectiveConfig.apiKey && isTransientProviderError(error)) {
+      const candidates = PROVIDER_PRIORITY.filter(
+        (p) => p !== provider && hasConfiguredKey(p)
+      );
+      for (const next of candidates) {
+        try {
+          console.warn(`chatCompletion: ${provider} falló (${norm.code}), fallback a ${next}`);
+          return await chatCompletion({ ...config, provider: next }, params);
+        } catch (nextErr: any) {
+          console.warn(`chatCompletion: fallback ${next} también falló: ${nextErr.message}`);
+          const nerr = nextErr as any;
+          if (nerr?.status) {
+            (enhancedErr as any).status = nerr.status;
+            (enhancedErr as any).code = nerr.code;
+            (enhancedErr as any).originalMessage = nerr.originalMessage || nerr.message;
+            (enhancedErr as any).message = nerr.message;
+          }
+        }
+      }
+    }
+
     // Fallback simulado para entorno local offline si no hay claves de ninguna clase y es RAG o structured
     const lastUser = params?.messages?.find((m: any) => m.role === "user")?.content || "";
     const system = params?.messages?.find((m: any) => m.role === "system")?.content || "";
@@ -306,8 +361,9 @@ export async function createEmbedding(
 
     const key = apiKeyForEmbedding || process.env[`${providerForEmbedding.toUpperCase()}_API_KEY`];
     if (!key) {
-      // Sin key configurada -> usar fallback semántico local de 1536 dimensiones
-      return generateLocalEmbedding(text, 1536);
+      // Sin key para este proveedor → lanzar para que el failover pruebe los demás
+      // (si no hay ninguna key en el entorno, el catch resuelve al fallback local offline).
+      throw new Error(`La API Key para ${providerForEmbedding.toUpperCase()} no está configurada (embeddings).`);
     }
 
     const client = getClient({ provider: providerForEmbedding, apiKey: key });
@@ -315,7 +371,7 @@ export async function createEmbedding(
     if (providerForEmbedding === "gemini") {
       const model = client.getGenerativeModel({ model: "text-embedding-004" });
       const result = await model.embedContent(text);
-      return result.embedding.values;
+      return markEmbeddingMode("provider"), toEmbeddingDim(result.embedding.values);
     }
 
     if (providerForEmbedding === "openrouter") {
@@ -325,14 +381,46 @@ export async function createEmbedding(
         input: text,
         encoding_format: "float",
       });
-      return response.data[0].embedding;
+      return markEmbeddingMode("provider"), toEmbeddingDim(response.data[0].embedding);
     }
 
     const model = process.env.EMBEDDING_MODEL ?? "text-embedding-3-small";
     const response = await client.embeddings.create({ model, input: text });
-    return response.data[0].embedding;
+    return markEmbeddingMode("provider"), toEmbeddingDim(response.data[0].embedding);
   } catch (error: any) {
-    console.warn(`Aviso: Error en createEmbedding (${provider}): ${error.message}. Utilizando fallback semántico local.`);
+    console.warn(`Aviso: Error en createEmbedding (${provider}): ${error.message}. Buscando fallback…`);
+
+    // Failover automático: sin apiKey explícita del usuario → probar los demás proveedores con key.
+    if (!effectiveConfig.apiKey) {
+      const candidates = PROVIDER_PRIORITY.filter(
+        (p) => p !== provider && hasConfiguredKey(p)
+      );
+      for (const next of candidates) {
+        try {
+          console.warn(`createEmbedding: ${provider} falló, fallback a ${next}`);
+          return await createEmbedding({ ...config, provider: next }, text);
+        } catch (nextErr: any) {
+          console.warn(`createEmbedding: fallback ${next} también falló: ${nextErr.message}`);
+        }
+      }
+    }
+
+    // Modo local offline: todas las APIs fallaron → vectores semánticos locales.
+    // La práctica sigue funcionando (consistente: seed y query usan el mismo algoritmo).
+    console.warn(
+      `Modo local: embeddings sin API válida (${provider}). ` +
+        `La práctica usa vectores locales. Configurá una API key válida para embeddings reales.`
+    );
+    lastEmbeddingMode = "local";
     return generateLocalEmbedding(text, 1536);
   }
+}
+
+// Último modo de embedding usado: "provider" | "local" (para mostrarlo en la UI)
+let lastEmbeddingMode: "provider" | "local" = "local";
+export function getLastEmbeddingMode(): "provider" | "local" {
+  return lastEmbeddingMode;
+}
+function markEmbeddingMode(mode: "provider" | "local") {
+  lastEmbeddingMode = mode;
 }

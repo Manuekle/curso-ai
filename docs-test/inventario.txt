@@ -1,0 +1,20 @@
+REGISTRO DE INVENTARIO (2026)
+
+Almacén Central:
+- Notebooks Dell Latitude 5540: 45 unidades en stock. Stock bajo si menos de 10.
+- Monitores LG 27": 120 unidades. Proveedor: Tecnored S.A.
+- Sillas ergonómicas Herman Miller: 8 unidades. STOCK BAJO — reordenar ya.
+- Impresoras HP LaserJet: 15 unidades. Stock bajo si menos de 5.
+- Cajas de resmas A4 (500 hojas): 400 unidades.
+
+Reglas de reposición:
+- Un producto está en stock bajo cuando su cantidad es menor a 10 unidades.
+- Los productos con stock bajo se reordenan automáticamente al proveedor principal.
+- El pedido de reposición equivale a 30 días de demanda promedio histórica.
+- Los movimientos (entradas, salidas, ajustes) se registran con ID del usuario responsable.
+- El inventario se audita completo cada trimestre y por muestreo mensual.
+
+Preguntas de ejemplo:
+- ¿Qué productos están en stock bajo?
+- ¿Cuántas notebooks hay en el almacén?
+- ¿Cuál es la regla para reordenar inventario?
