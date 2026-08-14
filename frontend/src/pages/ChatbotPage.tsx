@@ -115,6 +115,36 @@ function saveHistory(messages: ChatMessage[]) {
   }
 }
 
+// Small talk: saludos, agradecimientos y despedidas NO pasan por RAG (no hay similitud semántica con docs).
+const SMALL_TALK: Array<{ pattern: RegExp; reply: string }> = [
+  {
+    pattern: /^(hola|buenas|buen día|buenos días|buen dia|buenos dias|hey|hi|hello)\b[\s!.,]*$/i,
+    reply:
+      "¡Hola! Soy tu asistente sobre tus documentos. Preguntame algo sobre lo que indexaste (vacaciones, stock, políticas…).",
+  },
+  {
+    pattern: /^(gracias|muchas gracias|thank you|thanks)\b[\s!.,]*$/i,
+    reply: "¡De nada! Preguntame lo que necesites.",
+  },
+  {
+    pattern: /^(chau|adiós|adios|hasta luego|bye|nos vemos)\b[\s!.,]*$/i,
+    reply: "¡Chau! Quedo por acá si necesitás algo más.",
+  },
+  {
+    pattern: /^qui[eé]n (eres|sos|sois)\??$/i,
+    reply:
+      "Soy un chatbot con RAG 100% local: respondo sobre los documentos que subiste o importaste. Vectores y chat viven en tu localStorage, sin servidor.",
+  },
+]
+
+function detectSmallTalk(q: string): string | null {
+  const trimmed = q.trim()
+  for (const t of SMALL_TALK) {
+    if (t.pattern.test(trimmed)) return t.reply
+  }
+  return null
+}
+
 export function ChatbotPage() {
   const { apiKeys, activeProvider, configuredCount, setActiveProvider } = useApiKeys()
   const [docs, setDocs] = useState<LocalDoc[]>(() => loadStore())
@@ -209,6 +239,13 @@ export function ChatbotPage() {
     const updated = [...messages, { role: "user" as const, content: q }]
     setMessages(updated)
 
+    // Small talk se responde directo, sin RAG ni embeddings.
+    const smallTalk = detectSmallTalk(q)
+    if (smallTalk) {
+      setMessages([...updated, { role: "assistant", content: smallTalk }])
+      return
+    }
+
     const currentDocs = docs
     if (currentDocs.length === 0) {
       setMessages([...updated, { role: "assistant", content: "La base local está vacía. Subí un archivo (md, txt, pdf, docx, xlsx, csv) o importá la base del server para que pueda responder." }])
@@ -224,10 +261,9 @@ export function ChatbotPage() {
 
       let answer: string
       if (passed.length === 0) {
-        const top = hits.slice(0, 3).map((h) => `${h.id} (similitud ${h.score})`).join(", ")
         answer =
-          `Ningún documento alcanzó el umbral de similitud (0.20). ` +
-          `Los más cercanos fueron: ${top}. Probá bajar el umbral o reformular la pregunta.`
+          `No encontré información relacionada en tus documentos (umbral de similitud 0.20). ` +
+          `Probá reformular la pregunta con otros términos.`
       } else {
         const context = passed.map((h) => `[fuente: ${h.id}]\n${currentDocs.find((d) => d.id === h.id)?.text ?? ""}`).join("\n\n---\n\n")
         const ragMessages = [
